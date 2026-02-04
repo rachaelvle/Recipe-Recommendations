@@ -1,107 +1,118 @@
+// This code was created with AI. It requests information from the API and then 
+// processes it into inverted indexes that we can use to get results for queries.
+
 import fs from "fs";
 import fetch from "node-fetch";
 import path from "path";
+import {
+  bucketTime,
+  computeDifficulty,
+  normalizeIngredient,
+  normalizeString,
+  sleep,
+  type IDFStats,
+  type Recipe
+} from "./helpers.ts";
 
-// ---------- TYPES ----------
-interface Ingredient {
-  id: number;
-  name: string;
-  amount?: number;
-  unit?: string;
-}
-
-interface Recipe {
-  id: number;
-  title: string;
-  readyInMinutes: number;
-  cuisines: string[];
-  dishTypes: string[];
-  diets: string[];
-  extendedIngredients: Ingredient[];
-  image?: string;
-  imageType?: string;
-  instructions?: string;
-  summary?: string;
-  servings?: number;
-  sourceUrl?: string;
-}
-
-// ---------- CONFIG ----------
-const API_KEY = "6699f0736631455585c44eca8c953bde";
+// configs
+const API_KEY = "API KEY";
 const RECIPES_PER_REQUEST = 100;
-const TOTAL_RECIPES = 150; // Safe for free tier (150 points/day)
-const DELAY_BETWEEN_REQUESTS = 1200; // 1.2 seconds between requests
+const TOTAL_RECIPES = 150;
+const DELAY_BETWEEN_REQUESTS = 1200;
+
+// where to save the data
 const OUTPUT_DIR = path.join(process.cwd(), "indexes");
 const RECIPES_FILE = path.join(process.cwd(), "recipes.json");
 
-// ---------- UTILITY FUNCTIONS ----------
-function normalizeString(str: string | undefined): string {
-  return (str || "").toLowerCase().trim();
-}
-
-function bucketTime(minutes: number): string {
-  if (minutes <= 15) return "0-15";
-  if (minutes <= 30) return "16-30";
-  if (minutes <= 60) return "31-60";
-  return "60+";
-}
-
-function computeDifficulty(recipe: Recipe): string {
-  const numIngredients = recipe.extendedIngredients?.length || 0;
-  const time = recipe.readyInMinutes || 0;
-  if (numIngredients <= 7 && time <= 30) return "easy";
-  if (numIngredients <= 12 && time <= 60) return "medium";
-  return "hard";
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ---------- INDEX TYPES ----------
 type InvertedIndex = { [key: string]: Set<number> };
-type TitleIndex = { [token: string]: { id: number; tf: number }[] };
 
-// ---------- INITIALIZE INDEXES ----------
 const ingredientIndex: InvertedIndex = {};
 const cuisineIndex: InvertedIndex = {};
 const dietIndex: InvertedIndex = {};
 const mealTypeIndex: InvertedIndex = {};
 const timeBucketIndex: InvertedIndex = {};
 const difficultyIndex: InvertedIndex = {};
-const titleIndex: TitleIndex = {};
+const titleIndex: InvertedIndex = {};
 
-// ---------- HELPERS ----------
+// loading data so we do not save over existing indexes
+function loadIndex(filename: string): InvertedIndex {
+  const file = path.join(OUTPUT_DIR, filename);
+  if (!fs.existsSync(file)) return {};
+  const raw = JSON.parse(fs.readFileSync(file, "utf-8"));
+  const idx: InvertedIndex = {};
+  Object.entries(raw).forEach(([k, arr]: any) => {
+    idx[k] = new Set<number>(arr);
+  });
+  return idx;
+}
+
+function loadRecipes(): Recipe[] {
+  if (!fs.existsSync(RECIPES_FILE)) return [];
+  return JSON.parse(fs.readFileSync(RECIPES_FILE, "utf-8"));
+}
+
+// helpers to add to the indexes
 function addToIndex(index: InvertedIndex, key: string, recipeId: number) {
   if (!key) return;
   if (!index[key]) index[key] = new Set<number>();
   index[key].add(recipeId);
 }
 
-function addToTitleIndex(titleIndex: TitleIndex, recipeId: number, tokens: string[]) {
-  tokens.forEach(token => {
-    if (!titleIndex[token]) titleIndex[token] = [];
-    titleIndex[token].push({ id: recipeId, tf: 1 });
+// after we add to the indexes, we can calculate IDF stats for ranking later
+function calculateIDFStats(recipes: Recipe[], titleIndex: InvertedIndex, ingredientIndex: InvertedIndex): IDFStats {
+  const stats: IDFStats = {
+    totalDocs: recipes.length,
+    docFrequency: {}
+  };
+
+  // for titles
+  Object.entries(titleIndex).forEach(([term, recipeIds]) => {
+    stats.docFrequency[term] = recipeIds.size;
   });
+
+  // for ingredients
+  Object.entries(ingredientIndex).forEach(([ingredient, recipeIds]) => {
+    stats.docFrequency[ingredient] = recipeIds.size;
+  });
+
+  return stats;
 }
 
-// ---------- FETCH RECIPES ----------
-async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
-  const url = `https://api.spoonacular.com/recipes/complexSearch?number=${number}&offset=${offset}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
+// had to get the instructions separately (just for UI)
+async function fetchRecipeDetails(recipeId: number): Promise<Partial<Recipe>> {
+  const url = `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`;
   
   try {
-    console.log(`  API Request: offset=${offset}, number=${number}`);
     const res = await fetch(url);
-    
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`API Error (${res.status}): ${errorText}`);
+      console.error(`❌ API Error fetching recipe ${recipeId}: ${res.status}`);
+      return {};
+    }
+    const r: any = await res.json();
+    
+    return {
+      instructions: r.instructions || ""
+    };
+  } catch (err) {
+    console.error(`❌ Error fetching recipe ${recipeId}:`, err);
+    return {};
+  }
+}
+
+async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
+  const url = `https://api.spoonacular.com/recipes/complexSearch?number=${number}&offset=${offset}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`❌ API Error: ${res.status} ${res.statusText}`);
       return [];
     }
-    
     const data: any = await res.json();
     
-    return (data.results || []).map((r: any) => ({
+    console.log(`API Response: totalResults=${data.totalResults}, returned=${data.results?.length || 0}`);
+
+    const basicRecipes = (data.results || []).map((r: any) => ({
       id: r.id,
       title: r.title,
       readyInMinutes: r.readyInMinutes,
@@ -116,111 +127,126 @@ async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<R
       })),
       image: r.image,
       imageType: r.imageType,
-      instructions: r.instructions || "",
+      instructions: r.instructions || "",  // Try to get from first call
       summary: r.summary || "",
       servings: r.servings,
       sourceUrl: r.sourceUrl || r.spoonacularSourceUrl
     }));
-  } catch (error) {
-    console.error("Fetch error:", error);
+
+    return basicRecipes;
+  } catch (err) {
+    console.error(`Fetch error:`, err);
     return [];
   }
 }
 
-// ---------- MAIN FUNCTION ----------
 async function main() {
-  console.log("🍳 Starting recipe indexer...");
-  console.log(`📊 Target: ${TOTAL_RECIPES} recipes\n`);
+  if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR);
 
-  const allRecipes: Recipe[] = [];
-  let fetched = 0;
-  let offset = 0;
-  let requestCount = 0;
+  let allRecipes: Recipe[] = loadRecipes();
+  const seen = new Set(allRecipes.map(r => r.id));
 
-  while (fetched < TOTAL_RECIPES) {
-    const remaining = TOTAL_RECIPES - fetched;
-    const toFetch = Math.min(RECIPES_PER_REQUEST, remaining);
+  // Load existing indexes
+  Object.assign(ingredientIndex, loadIndex("ingredientIndex.json"));
+  Object.assign(cuisineIndex, loadIndex("cuisineIndex.json"));
+  Object.assign(dietIndex, loadIndex("dietIndex.json"));
+  Object.assign(mealTypeIndex, loadIndex("mealTypeIndex.json"));
+  Object.assign(timeBucketIndex, loadIndex("timeBucketIndex.json"));
+  Object.assign(difficultyIndex, loadIndex("difficultyIndex.json"));
+  Object.assign(titleIndex, loadIndex("titleIndex.json"));
+
+  let offset = allRecipes.length; // Start from where we left off
+  
+  console.log(`Current recipes: ${allRecipes.length}, Target: ${TOTAL_RECIPES}`);
+  
+  if (allRecipes.length >= TOTAL_RECIPES) {
+    console.log(`Already have ${allRecipes.length} recipes (target: ${TOTAL_RECIPES}). Nothing to fetch.`);
     
-    console.log(`Fetching batch ${requestCount + 1}: recipes ${offset + 1} to ${offset + toFetch}...`);
-    const recipes: Recipe[] = await fetchRecipes(offset, toFetch);
-    if (!recipes.length) break;
-
-    allRecipes.push(...recipes);
-
-    // Index recipes immediately
-    recipes.forEach(recipe => {
-      const rid = recipe.id;
-
-      // Ingredients
-      (recipe.extendedIngredients || []).forEach(ing => {
-        addToIndex(ingredientIndex, normalizeString(ing.name), rid);
-      });
-
-      // Cuisine
-      (recipe.cuisines || []).map(normalizeString).forEach(c => addToIndex(cuisineIndex, c, rid));
-
-      // Diet
-      (recipe.diets || []).map(normalizeString).forEach(d => addToIndex(dietIndex, d, rid));
-
-      // Meal Type
-      (recipe.dishTypes || []).map(normalizeString).forEach(m => addToIndex(mealTypeIndex, m, rid));
-
-      // Cooking Time bucket
-      const bucket = bucketTime(recipe.readyInMinutes);
-      addToIndex(timeBucketIndex, bucket, rid);
-
-      // Difficulty
-      const diff = computeDifficulty(recipe);
-      addToIndex(difficultyIndex, diff, rid);
-
-      // Title tokens
-      const tokens = recipe.title.split(/\s+/).map(normalizeString);
-      addToTitleIndex(titleIndex, rid, tokens);
-    });
-
-    fetched += recipes.length;
-    offset += recipes.length;
-    requestCount++;
+    // Recalculate IDF stats even if we didn't fetch new recipes
+    console.log("Calculating IDF statistics...");
+    const idfStats = calculateIDFStats(allRecipes, titleIndex, ingredientIndex);
+    fs.writeFileSync(
+      path.join(OUTPUT_DIR, "idfStats.json"),
+      JSON.stringify(idfStats, null, 2)
+    );
+    console.log(`IDF stats calculated: totalDocs=${idfStats.totalDocs}, uniqueTerms=${Object.keys(idfStats.docFrequency).length}`);
     
-    console.log(`✅ Indexed ${recipes.length} recipes (Total: ${fetched}/${TOTAL_RECIPES})\n`);
-
-    // Rate limiting: wait between requests
-    if (fetched < TOTAL_RECIPES) {
-      console.log(`⏳ Waiting ${DELAY_BETWEEN_REQUESTS}ms before next request...`);
-      await sleep(DELAY_BETWEEN_REQUESTS);
-    }
+    console.log("Incremental indexing complete!");
+    return;
   }
 
-  console.log("\n✅ Finished fetching all recipes!");
-  console.log(`📈 Total recipes indexed: ${allRecipes.length}`);
-  console.log(`📞 Total API requests: ${requestCount}\n`);
-  console.log("💾 Saving recipes.json and indexes...");
+  while (allRecipes.length < TOTAL_RECIPES) {
+    const toFetch = Math.min(RECIPES_PER_REQUEST, TOTAL_RECIPES - allRecipes.length);
+    console.log(` Fetching ${toFetch} recipes from offset ${offset}...`);
+    const recipes = await fetchRecipes(offset, toFetch);
+    
+    if (!recipes.length) {
+      console.log(`No more recipes available from API`);
+      break;
+    }
+    
+    console.log(`Received ${recipes.length} recipes from API`);
 
-  // Save all recipes in one master JSON file
+    // Index new recipes
+    recipes.forEach(recipe => {
+      if (seen.has(recipe.id)) return;
+      seen.add(recipe.id);
+      allRecipes.push(recipe);
+
+      const rid = recipe.id;
+
+      recipe.extendedIngredients.forEach(ing => {
+        const normalized = normalizeIngredient(ing.name);
+        addToIndex(ingredientIndex, normalized, rid);
+      });
+
+      // Add other attributes
+      recipe.cuisines.map(normalizeString).forEach(c => addToIndex(cuisineIndex, c, rid));
+      recipe.diets.map(normalizeString).forEach(d => addToIndex(dietIndex, d, rid));
+      recipe.dishTypes.map(normalizeString).forEach(m => addToIndex(mealTypeIndex, m, rid));
+
+      addToIndex(timeBucketIndex, bucketTime(recipe.readyInMinutes), rid);
+      addToIndex(difficultyIndex, computeDifficulty(recipe), rid);
+
+      // Add title tokens to index (just recipe IDs, no TF)
+      const tokens = recipe.title.split(/\s+/).map(normalizeString).filter(t => t.length > 0);
+      tokens.forEach(token => addToIndex(titleIndex, token, rid));
+    });
+
+    console.log(`Total recipes now: ${allRecipes.length}/${TOTAL_RECIPES}`);
+    offset += recipes.length;
+    await sleep(DELAY_BETWEEN_REQUESTS);
+  }
+
+  // Save all data
+  console.log("Saving indexes...");
+  
   fs.writeFileSync(RECIPES_FILE, JSON.stringify(allRecipes, null, 2));
-
-  // Save all indexes
-  if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR);
 
   function saveIndex(index: InvertedIndex, filename: string) {
     const obj: { [key: string]: number[] } = {};
-    Object.keys(index).forEach(k => (obj[k] = Array.from(index[k])));
-    fs.writeFileSync(path.join(OUTPUT_DIR, filename + ".json"), JSON.stringify(obj, null, 2));
+    Object.entries(index).forEach(([k, v]) => (obj[k] = Array.from(v)));
+    fs.writeFileSync(path.join(OUTPUT_DIR, filename), JSON.stringify(obj, null, 2));
   }
 
-  saveIndex(ingredientIndex, "ingredientIndex");
-  saveIndex(cuisineIndex, "cuisineIndex");
-  saveIndex(dietIndex, "dietIndex");
-  saveIndex(mealTypeIndex, "mealTypeIndex");
-  saveIndex(timeBucketIndex, "timeBucketIndex");
-  saveIndex(difficultyIndex, "difficultyIndex");
+  saveIndex(ingredientIndex, "ingredientIndex.json");
+  saveIndex(cuisineIndex, "cuisineIndex.json");
+  saveIndex(dietIndex, "dietIndex.json");
+  saveIndex(mealTypeIndex, "mealTypeIndex.json");
+  saveIndex(timeBucketIndex, "timeBucketIndex.json");
+  saveIndex(difficultyIndex, "difficultyIndex.json");
+  saveIndex(titleIndex, "titleIndex.json");
 
-  fs.writeFileSync(path.join(OUTPUT_DIR, "titleIndex.json"), JSON.stringify(titleIndex, null, 2));
+  // Calculate and save IDF statistics
+  console.log("📊 Calculating IDF statistics...");
+  const idfStats = calculateIDFStats(allRecipes, titleIndex, ingredientIndex);
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, "idfStats.json"),
+    JSON.stringify(idfStats, null, 2)
+  );
+  console.log(`IDF stats calculated: totalDocs=${idfStats.totalDocs}, uniqueTerms=${Object.keys(idfStats.docFrequency).length}`);
 
-  console.log("\n🎉 All recipes and indexes saved successfully!");
-  console.log(`📁 Recipes: ${RECIPES_FILE}`);
-  console.log(`📁 Indexes: ${OUTPUT_DIR}/`);
+  console.log("Incremental indexing complete!");
 }
 
-// ---------- RUN ----------
-main().catch(err => console.error(err));
+main().catch(console.error);
