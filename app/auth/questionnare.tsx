@@ -13,7 +13,7 @@ export default function About() {
       router.push("/auth/Login");
     } else {
       // first time -> go questionnaire
-      router.push("/auth/Register");
+      router.push("/auth/CreateUserProfile");
     }
   }
 

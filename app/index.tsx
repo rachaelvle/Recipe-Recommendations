@@ -9,7 +9,7 @@ export default function Index() {
 
     if (hasUsed) {
       // used before -> go login
-      router.push("/auth/login");
+      router.push("/auth/Login");
     } else {
       // first time -> go questionnaire
       router.push("/auth/questionnare");

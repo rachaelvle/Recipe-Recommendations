@@ -52,7 +52,7 @@ export default function Login() {
         secureTextEntry // password dots 
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null} // on no input show error message 
+      {error ? <Text style={styles.error}>{error}</Text> : null} 
       
       <Pressable style={styles.YesButton} onPress={handleSubmit}>
         <Text style={styles.Text}>Sign In</Text>
