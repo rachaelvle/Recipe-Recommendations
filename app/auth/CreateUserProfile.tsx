@@ -3,10 +3,13 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+
+// TODO: add a way to store user data json file? 
+
 const Admin = "admin"
 const AdminPass = "password"
 
-export default function Login() {
+export default function CreateUserProfile() {
 
   // store user input to be later checked for login 
   const [email, setEmail] = useState("");
@@ -40,7 +43,7 @@ export default function Login() {
       router.push("/home/HomePage") // CHANGE LATER WHEN FINALIZING
     }
 
-    router.push("/home/HomePage")
+    router.push("/auth/UserPreferences")
 
   }
 
