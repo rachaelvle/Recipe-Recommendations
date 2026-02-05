@@ -33,35 +33,52 @@ export interface IDFStats {
   docFrequency: { [term: string]: number }; // How many docs contain each term
 }
 
+// Stop words to exclude from indexing
+const STOP_WORDS = new Set([
+  // Common articles and prepositions
+  'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'with',
+  'at', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been',
+  
+  // Common modifiers/descriptors (from your list)
+  'additional', 'topping', 'flat', 'leaf', 'curly', 'new', 'optional',
+  
+  // Common verbs
+  'can', 'use', 'following',
+]);
+
+// Cooking modifiers to remove from all text
+const COOKING_MODIFIERS = [
+  'fresh', 'freshly', 'dried', 'frozen', 'canned', 
+  'chopped', 'chop', 'diced', 'dice', 'minced', 'mince',
+  'sliced', 'slice', 'ground', 'grated', 'grate', 'shredded', 'shred',
+  'crushed', 'crush', 'whole', 'halved', 'halve', 'quartered', 'quarter',
+  'cooked', 'cook', 'raw', 'uncooked', 'blanched', 'blanch',
+  'roasted', 'roast', 'toasted', 'toast', 'baked', 'bake',
+  'grilled', 'grill', 'fried', 'fry', 'sauteed', 'saute',
+  'steamed', 'steam', 'boiled', 'boil', 'simmered', 'simmer',
+  'unsalted', 'salted', 'salt', 'sweetened', 'sweet', 'unsweetened',
+  'organic', 'free-range', 'grass-fed', 'wild-caught',
+  'extra virgin', 'extra-virgin', 'virgin', 'light', 'dark', 'heavy',
+  'low-fat', 'lowfat', 'fat-free', 'fatfree', 'reduced-fat', 'full-fat',
+  'boneless', 'skinless', 'seedless', 'pitted',
+  'large', 'small', 'medium', 'baby', 'young', 'mature',
+  'ripe', 'firm', 'soft', 'tender', 'tough',
+  'thick', 'thin', 'fine', 'finely', 'coarse', 'coarsely',
+  'rough', 'roughly', 'smooth', 'smoothly'
+];
+
 // string normalization and processing common words 
 export function normalizeString(str: string | undefined): string {
   return (str || "").toLowerCase().trim();
 }
 
-export function normalizeIngredient(ingredientName: string): string {
-  let normalized = normalizeString(ingredientName);
+// UNIFIED normalization for both ingredients and titles
+// Returns the full normalized string (for matching like "chicken breast")
+export function normalizeText(text: string): string {
+  let normalized = normalizeString(text);
   
-  const modifiers = [
-    'fresh', 'freshly', 'dried', 'frozen', 'canned', 
-    'chopped', 'chop', 'diced', 'dice', 'minced', 'mince',
-    'sliced', 'slice', 'ground', 'grated', 'grate', 'shredded', 'shred',
-    'crushed', 'crush', 'whole', 'halved', 'halve', 'quartered', 'quarter',
-    'cooked', 'cook', 'raw', 'uncooked', 'blanched', 'blanch',
-    'roasted', 'roast', 'toasted', 'toast', 'baked', 'bake',
-    'grilled', 'grill', 'fried', 'fry', 'sauteed', 'saute',
-    'steamed', 'steam', 'boiled', 'boil', 'simmered', 'simmer',
-    'unsalted', 'salted', 'salt', 'sweetened', 'sweet', 'unsweetened',
-    'organic', 'free-range', 'grass-fed', 'wild-caught',
-    'extra virgin', 'extra-virgin', 'virgin', 'light', 'dark', 'heavy',
-    'low-fat', 'lowfat', 'fat-free', 'fatfree', 'reduced-fat', 'full-fat',
-    'boneless', 'skinless', 'seedless', 'pitted',
-    'large', 'small', 'medium', 'baby', 'young', 'mature',
-    'ripe', 'firm', 'soft', 'tender', 'tough',
-    'thick', 'thin', 'fine', 'finely', 'coarse', 'coarsely',
-    'rough', 'roughly', 'smooth', 'smoothly'
-  ];
-  
-  for (const modifier of modifiers) {
+  // Remove cooking modifiers
+  for (const modifier of COOKING_MODIFIERS) {
     const pattern = new RegExp(`\\b${modifier}\\b`, 'gi');
     normalized = normalized.replace(pattern, '');
   }
@@ -72,10 +89,37 @@ export function normalizeIngredient(ingredientName: string): string {
     .replace(/\b(\w+)oes\b/g, '$1o')    
     .replace(/\b(\w+[^s])s\b/g, '$1');   
 
-  normalized = normalized.replace(/\s+/g, ' ').trim();
+  // Remove special characters and punctuation (-, ', *, etc.)
+  normalized = normalized.replace(/[-'*]/g, ' ');
   
-  return normalized;
-} 
+  // Remove numbers
+  normalized = normalized.replace(/\b\d+\b/g, '');
+  
+  // Remove stop words
+  const words = normalized.split(/\s+/).filter(word => {
+    // Remove empty strings
+    if (!word) return false;
+    
+    // Remove stop words
+    if (STOP_WORDS.has(word)) return false;
+    
+    // Remove very short words (single letters)
+    if (word.length < 2) return false;
+    
+    return true;
+  });
+  
+  return words.join(' ').trim();
+}
+
+// For backward compatibility - both use the same normalization
+export function normalizeIngredient(ingredientName: string): string {
+  return normalizeText(ingredientName);
+}
+
+export function normalizeTitle(title: string): string {
+  return normalizeText(title);
+}
 
 // break down cooking time and difficulties
 export function bucketTime(minutes: number): string {
@@ -162,13 +206,13 @@ export function scoreIngredientMatch(
   }
   
   const normalizedUserIngredients = new Set(
-    userIngredients.map(ing => normalizeIngredient(ing))
+    userIngredients.map(ing => normalizeText(ing))
   );
   
   let matchCount = 0;
   
   for (const recipeIng of recipe.extendedIngredients) {
-    const normalizedRecipeIng = normalizeIngredient(recipeIng.name);
+    const normalizedRecipeIng = normalizeText(recipeIng.name);
     
     // Check for exact match or partial match
     const matches = Array.from(normalizedUserIngredients).some(userIng => 

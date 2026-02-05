@@ -9,6 +9,7 @@ import {
   computeDifficulty,
   normalizeIngredient,
   normalizeString,
+  normalizeTitle,
   sleep,
   type IDFStats,
   type Recipe
@@ -163,7 +164,7 @@ async function main() {
     console.log(`Already have ${allRecipes.length} recipes (target: ${TOTAL_RECIPES}). Nothing to fetch.`);
     
     // Recalculate IDF stats even if we didn't fetch new recipes
-    console.log("Calculating IDF statistics...");
+    console.log("📊 Calculating IDF statistics...");
     const idfStats = calculateIDFStats(allRecipes, titleIndex, ingredientIndex);
     fs.writeFileSync(
       path.join(OUTPUT_DIR, "idfStats.json"),
@@ -171,21 +172,21 @@ async function main() {
     );
     console.log(`IDF stats calculated: totalDocs=${idfStats.totalDocs}, uniqueTerms=${Object.keys(idfStats.docFrequency).length}`);
     
-    console.log("Incremental indexing complete!");
+    console.log("✅ Incremental indexing complete!");
     return;
   }
 
   while (allRecipes.length < TOTAL_RECIPES) {
     const toFetch = Math.min(RECIPES_PER_REQUEST, TOTAL_RECIPES - allRecipes.length);
-    console.log(` Fetching ${toFetch} recipes from offset ${offset}...`);
+    console.log(`🔄 Fetching ${toFetch} recipes from offset ${offset}...`);
     const recipes = await fetchRecipes(offset, toFetch);
     
     if (!recipes.length) {
-      console.log(`No more recipes available from API`);
+      console.log(`⚠️ No more recipes available from API`);
       break;
     }
     
-    console.log(`Received ${recipes.length} recipes from API`);
+    console.log(`✅ Received ${recipes.length} recipes from API`);
 
     // Index new recipes
     recipes.forEach(recipe => {
@@ -195,9 +196,16 @@ async function main() {
 
       const rid = recipe.id;
 
+      // Index ingredients - index each word separately
+      // This allows "chicken" to match "chicken breast", "chicken thigh", etc.
       recipe.extendedIngredients.forEach(ing => {
         const normalized = normalizeIngredient(ing.name);
-        addToIndex(ingredientIndex, normalized, rid);
+        const words = normalized.split(/\s+/).filter(w => w.length > 0);
+        
+        // Index each word separately so partial matches work
+        words.forEach(word => {
+          addToIndex(ingredientIndex, word, rid);
+        });
       });
 
       // Add other attributes
@@ -208,18 +216,23 @@ async function main() {
       addToIndex(timeBucketIndex, bucketTime(recipe.readyInMinutes), rid);
       addToIndex(difficultyIndex, computeDifficulty(recipe), rid);
 
-      // Add title tokens to index (just recipe IDs, no TF)
-      const tokens = recipe.title.split(/\s+/).map(normalizeString).filter(t => t.length > 0);
-      tokens.forEach(token => addToIndex(titleIndex, token, rid));
+      // Add title tokens to index - index each word separately
+      const titleNormalized = normalizeTitle(recipe.title);
+      const tokens = titleNormalized.split(/\s+/).filter(t => t.length > 0);
+      
+      // Index each word separately
+      tokens.forEach(token => {
+        addToIndex(titleIndex, token, rid);
+      });
     });
 
-    console.log(`Total recipes now: ${allRecipes.length}/${TOTAL_RECIPES}`);
+    console.log(`📈 Total recipes now: ${allRecipes.length}/${TOTAL_RECIPES}`);
     offset += recipes.length;
     await sleep(DELAY_BETWEEN_REQUESTS);
   }
 
   // Save all data
-  console.log("Saving indexes...");
+  console.log("💾 Saving indexes...");
   
   fs.writeFileSync(RECIPES_FILE, JSON.stringify(allRecipes, null, 2));
 
@@ -246,7 +259,7 @@ async function main() {
   );
   console.log(`IDF stats calculated: totalDocs=${idfStats.totalDocs}, uniqueTerms=${Object.keys(idfStats.docFrequency).length}`);
 
-  console.log("Incremental indexing complete!");
+  console.log("✅ Incremental indexing complete!");
 }
 
 main().catch(console.error);
