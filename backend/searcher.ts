@@ -5,6 +5,7 @@ import fs from "fs";
 import {
   bucketTime,
   calculateIDFScore,
+  intersectSets,
   normalizeIngredient,
   normalizeTitle,
   scoreIngredientMatch,
@@ -107,6 +108,7 @@ class RecipeSearchEngine {
     }
 
     const words = normalized.split(/\s+/);
+    const difficultyWords = ['easy', 'medium', 'hard', 'simple', 'quick', 'difficult'];
     const querySpecificWords = new Set([
       'recipe', 'recipes', 'make', 'cooking',
       ...cuisines,
@@ -114,10 +116,16 @@ class RecipeSearchEngine {
       ...mealTypes.map(m => m.split(' ')).flat()
     ]);
     
+    const ingredientExcludeWords = new Set([
+      ...querySpecificWords,
+      ...difficultyWords
+    ]);
+    
     const remainingWords = words.filter(w => !querySpecificWords.has(w));
+    const ingredientWords = words.filter(w => !ingredientExcludeWords.has(w));
 
     return {
-      ingredients: remainingWords,
+      ingredients: ingredientWords,
       titleKeywords: remainingWords,
       implicitFilters
     };
@@ -147,59 +155,106 @@ class RecipeSearchEngine {
     return sets.length ? unionSets(...sets) : new Set();
   }
 
-  private rankResultsByIDF(results: any[], params: SearchParams): any[] {
+  private applyFilters(recipes: any[], mergedFilters: Filters): any[] {
+    let allowedIds = new Set(recipes.map(r => r.id));
+
+    // Cuisine filter using inverted index
+    if (mergedFilters.cuisines?.length) {
+      const cuisineIds = mergedFilters.cuisines
+        .map(c => this.indexes.cuisine[c])
+        .filter(Boolean)
+        .map(ids => new Set(ids));
+      if (cuisineIds.length > 0) {
+        const cuisineAllowed = unionSets(...cuisineIds);
+        allowedIds = new Set([...allowedIds].filter(id => cuisineAllowed.has(id)));
+      }
+    }
+
+    // Diet filter using inverted index
+    if (mergedFilters.diets?.length) {
+      const dietIds = mergedFilters.diets
+        .map(d => this.indexes.diet[d])
+        .filter(Boolean)
+        .map(ids => new Set(ids));
+      if (dietIds.length > 0) {
+        const dietAllowed = unionSets(...dietIds);
+        allowedIds = new Set([...allowedIds].filter(id => dietAllowed.has(id)));
+      }
+    }
+
+    // Meal type filter using inverted index
+    if (mergedFilters.mealTypes?.length) {
+      const mealIds = mergedFilters.mealTypes
+        .map(m => this.indexes.mealType[m])
+        .filter(Boolean)
+        .map(ids => new Set(ids));
+      if (mealIds.length > 0) {
+        const mealAllowed = unionSets(...mealIds);
+        allowedIds = new Set([...allowedIds].filter(id => mealAllowed.has(id)));
+      }
+    }
+
+    // Time bucket filter using inverted index
+    if (mergedFilters.timeBuckets?.length) {
+      const timeIds = mergedFilters.timeBuckets
+        .map(t => this.indexes.timeBucket[t])
+        .filter(Boolean)
+        .map(ids => new Set(ids));
+      if (timeIds.length > 0) {
+        const timeAllowed = unionSets(...timeIds);
+        allowedIds = new Set([...allowedIds].filter(id => timeAllowed.has(id)));
+      }
+    }
+
+    // Difficulty filter using inverted index
+    if (mergedFilters.difficulties?.length) {
+      const diffIds = mergedFilters.difficulties
+        .map(d => this.indexes.difficulty[d])
+        .filter(Boolean)
+        .map(ids => new Set(ids));
+      if (diffIds.length > 0) {
+        const diffAllowed = unionSets(...diffIds);
+        allowedIds = new Set([...allowedIds].filter(id => diffAllowed.has(id)));
+      }
+    }
+
+    return recipes.filter(r => allowedIds.has(r.id));
+  }
+
+  private rankResultsByTitleKeywords(results: any[], titleKeywords: string[], params: SearchParams): any[] {
     const scores = new Map<number, number>();
-    const coverageMap = new Map<number, number>();
 
     results.forEach(r => scores.set(r.id, 0));
 
-    if (params.searchQuery?.trim()) {
-      const parsed = this.parseSearchQuery(params.searchQuery);
+    // Normalize title keywords
+    const normalizedKeywords = titleKeywords
+      .map(kw => normalizeTitle(kw))
+      .flatMap(n => n.split(/\s+/).filter(Boolean));
 
-      const titleKeywords = parsed.titleKeywords
-        .map(kw => normalizeTitle(kw))
-        .flatMap(n => n.split(/\s+/).filter(Boolean));
-      
-      const ingredientTerms = parsed.ingredients
-        .map(ing => normalizeIngredient(ing))
-        .flatMap(n => n.split(/\s+/).filter(Boolean));
-
-      const allQueryTerms = [...new Set([...titleKeywords, ...ingredientTerms])];
-
+    if (normalizedKeywords.length > 0) {
       results.forEach(recipe => {
         let score = 0;
-        let matched = 0;
 
-        allQueryTerms.forEach(term => {
-          if (this.indexes.title[term]?.includes(recipe.id) || 
-              this.indexes.ingredient[term]?.includes(recipe.id)) {
-            matched++;
-          }
-        });
+        // Title IDF score - boosts recipes with matching keywords in title
+        score += calculateIDFScore(normalizedKeywords, recipe.id, this.indexes.title, this.idfStats) * 10;
 
-        const coverage = allQueryTerms.length ? matched / allQueryTerms.length : 0;
-        coverageMap.set(recipe.id, coverage);
-        score += Math.pow(coverage, 2) * 100;
-
-        score += calculateIDFScore(titleKeywords, recipe.id, this.indexes.title, this.idfStats) * 5;
-        score += calculateIDFScore(ingredientTerms, recipe.id, this.indexes.ingredient, this.idfStats) * 5;
-
+        // Exact title match bonus
         const normalizedTitle = normalizeTitle(recipe.title);
-        const normalizedQuery = normalizeTitle(params.searchQuery!);
-        if (normalizedTitle.includes(normalizedQuery)) score += 50;
+        const normalizedQuery = normalizeTitle(titleKeywords.join(' '));
+        if (normalizedTitle.includes(normalizedQuery)) score += 100;
 
+        // Simplicity bonus (fewer ingredients = simpler recipe)
         const ingredientCount = recipe.extendedIngredients?.length || 20;
-        score += Math.max(0, (20 - ingredientCount) / 20) * 10;
+        score += Math.max(0, (20 - ingredientCount) / 20) * 20;
 
         scores.set(recipe.id, score);
       });
-
-      results = results.filter(r => (coverageMap.get(r.id) || 0) >= 1.0);
     }
 
+    // User ingredient match bonus
     if (params.userIngredients?.length) {
       results.forEach(recipe => {
-        scores.set(recipe.id, (scores.get(recipe.id) || 0) + scoreIngredientMatch(recipe, params.userIngredients!) * 50);
+        scores.set(recipe.id, (scores.get(recipe.id) || 0) + scoreIngredientMatch(recipe, params.userIngredients!) * 100);
       });
     }
 
@@ -211,7 +266,7 @@ class RecipeSearchEngine {
   let results: any[] = []; // final results
 
   let searchIngredients: string[] = [];
-  let searchTitleKeywords: string[] = [];
+  let titleSearchKeywords: string[] = [];
   let implicitFilters: Partial<Filters> = {};
 
   console.log("🔍 Original search query:", params.searchQuery);
@@ -220,11 +275,11 @@ class RecipeSearchEngine {
   if (params.searchQuery?.trim()) {
     const parsed = this.parseSearchQuery(params.searchQuery);
     searchIngredients = parsed.ingredients;
-    searchTitleKeywords = parsed.titleKeywords;
+    titleSearchKeywords = parsed.titleKeywords;
     implicitFilters = parsed.implicitFilters;
 
-    console.log("Parsed ingredients for text search:", searchIngredients);
-    console.log("Parsed title keywords for text search:", searchTitleKeywords);
+    console.log("Parsed ingredients for filtering:", searchIngredients);
+    console.log("Parsed title keywords for ranking boost:", titleSearchKeywords);
     console.log("Implicit filters from query:", implicitFilters);
   }
 
@@ -239,77 +294,68 @@ class RecipeSearchEngine {
 
   console.log("Merged filters applied:", mergedFilters);
 
-  // --- 1️⃣ Text search ---
-  let textSearchResults: any[] = [];
+  // --- 1️⃣ Apply standard filters ---
+  results = this.applyFilters(allRecipes, mergedFilters);
+  console.log("Number of results after applying filters:", results.length);
 
-  if (searchIngredients.length || searchTitleKeywords.length) {
-    const ingredientIds = this.getRecipeIdsFromIndex(searchIngredients, this.indexes.ingredient, normalizeIngredient);
-    const titleIds = this.getRecipeIdsFromIndex(searchTitleKeywords, this.indexes.title, normalizeTitle);
-    const textIds = unionSets(ingredientIds, titleIds);
+  // --- 2️⃣ Apply ingredient filter (from search query or params) ---
+  const ingredientsToFilter = params.userIngredients || searchIngredients;
+  const ingredientLogic = params.ingredientLogic || 'OR';
 
-    console.log("Text search IDs (ingredient OR title):", Array.from(textIds));
+  if (ingredientsToFilter.length > 0) {
+    const beforeIngredientFilter = results.length;
+    
+    // Get recipe IDs from ingredient index
+    const ingredientIdSets = ingredientsToFilter
+      .map(ing => {
+        const normalized = normalizeIngredient(ing);
+        const words = normalized.split(/\s+/).filter(Boolean);
+        const wordSets = words
+          .map(word => this.indexes.ingredient[word])
+          .filter(Boolean)
+          .map(ids => new Set(ids));
+        return wordSets.length ? unionSets(...wordSets) : new Set<number>();
+      })
+      .filter(set => set.size > 0);
 
-    if (textIds.size) {
-      textSearchResults = allRecipes.filter(r => textIds.has(r.id));
-      console.log("Number of results after text search:", textSearchResults.length);
-    } else {
-      console.log("No text search matches found.");
-      textSearchResults = []; // fallback to filters later
+    if (ingredientIdSets.length > 0) {
+      let allowedIngredientIds: Set<number>;
+      
+      if (ingredientLogic === 'AND') {
+        // Must have ALL ingredients
+        allowedIngredientIds = intersectSets(...ingredientIdSets);
+        console.log(`Ingredient filter (AND logic): Must have ALL of [${ingredientsToFilter.join(', ')}]`);
+      } else {
+        // Must have ANY ingredient
+        allowedIngredientIds = unionSets(...ingredientIdSets);
+        console.log(`Ingredient filter (OR logic): Must have ANY of [${ingredientsToFilter.join(', ')}]`);
+      }
+
+      results = results.filter(r => allowedIngredientIds.has(r.id));
+      console.log(`Filtered by ingredients: ${beforeIngredientFilter} → ${results.length}`);
     }
-  } else {
-    console.log("No keywords for text search, skipping text search step.");
   }
 
-  // --- 2️⃣ Apply filters ---
-  const applyFilters = (recipes: any[]) => {
-    let filtered = recipes;
-
-    if (mergedFilters.cuisines?.length) {
-      filtered = filtered.filter(r => r.cuisines?.some(c => mergedFilters.cuisines!.includes(c.toLowerCase())));
-    }
-    if (mergedFilters.diets?.length) {
-      filtered = filtered.filter(r => r.diets?.some(d => mergedFilters.diets!.includes(d.toLowerCase())));
-    }
-    if (mergedFilters.mealTypes?.length) {
-      filtered = filtered.filter(r => r.dishTypes?.some(m => mergedFilters.mealTypes!.includes(m.toLowerCase())));
-    }
-    if (mergedFilters.timeBuckets?.length) {
-      filtered = filtered.filter(r => mergedFilters.timeBuckets!.includes(bucketTime(r.readyInMinutes)));
-    }
-    if (mergedFilters.difficulties?.length) {
-    filtered = filtered.filter(
-      r => r.difficulty && mergedFilters.difficulties!.includes(r.difficulty.toLowerCase())
-    );
-  }
-
-    return filtered;
-  };
-
-  if (textSearchResults.length > 0) {
-    results = applyFilters(textSearchResults);
-    console.log("Number of results after applying filters on text search results:", results.length);
-  } else {
-    // No text matches → apply filters on full corpus
-    results = applyFilters(allRecipes);
-    console.log("Text search empty → applied filters on full corpus. Number of results:", results.length);
-  }
-
-  // --- 3️⃣ Only user ingredients ---
+  // --- 3️⃣ Only user ingredients filter (stricter check) ---
   if (params.onlyUserIngredients && params.userIngredients?.length) {
     const beforeCount = results.length;
     results = results.filter(r => this.recipeUsesOnlyUserIngredients(r, params.userIngredients!));
     console.log(`Filtered by onlyUserIngredients: ${beforeCount} → ${results.length}`);
   }
 
-  // --- 4️⃣ Rank by IDF only if there are actual search keywords ---
-  const hasKeywords = searchIngredients.length + searchTitleKeywords.length > 0;
-  if (hasKeywords && results.length > 1) {
-    console.log("Ranking results by IDF...");
-    results = this.rankResultsByIDF(results, params);
-    console.log("Results ranked by IDF.");
+  // --- 4️⃣ Rank by title keywords (if any) ---
+  const hasTitleKeywords = titleSearchKeywords.length > 0;
+  
+  if (hasTitleKeywords && results.length > 1) {
+    console.log("Ranking results by title keyword matches...");
+    results = this.rankResultsByTitleKeywords(results, titleSearchKeywords, params);
+    console.log("Results ranked.");
   } else {
-    console.log("No keywords to rank, skipping IDF ranking.");
+    console.log("No title keywords to rank by.");
   }
+
+  // --- 5️⃣ Limit to 10 results ---
+  results = results.slice(0, 10);
 
   console.log("✅ Final number of recipes returned:", results.length);
   return results;

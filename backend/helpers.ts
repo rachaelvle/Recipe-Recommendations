@@ -130,6 +130,31 @@ export function bucketTime(minutes: number): string {
 }
 
 export function computeDifficulty(recipe: Recipe): string {
+  // First check if the title contains difficulty indicators
+  const titleLower = recipe.title.toLowerCase();
+  
+  // Check for "easy" indicators
+  if (titleLower.includes('easy') || 
+      titleLower.includes('simple') || 
+      titleLower.includes('quick')) {
+    return "easy";
+  }
+  
+  // Check for "hard" indicators
+  if (titleLower.includes('hard') || 
+      titleLower.includes('difficult') || 
+      titleLower.includes('complex') || 
+      titleLower.includes('advanced')) {
+    return "hard";
+  }
+  
+  // Check for "medium" indicators (less common, but possible)
+  if (titleLower.includes('medium') || 
+      titleLower.includes('intermediate')) {
+    return "medium";
+  }
+  
+  // If no difficulty in title, fall back to ingredient/time heuristic
   const numIngredients = recipe.extendedIngredients?.length || 0;
   const time = recipe.readyInMinutes || 0;
   if (numIngredients <= 7 && time <= 30) return "easy";

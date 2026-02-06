@@ -1,5 +1,6 @@
 // Simplified indexer that reads from existing recipes.json
 // and creates inverted indexes
+// this is for testing purposes so the API is not consistently called cause of rate limits
 
 import fs from "fs";
 import path from "path";
