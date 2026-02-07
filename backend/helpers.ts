@@ -1,47 +1,12 @@
-// Utility functions for recipe indexing and searching
-// Simplified IDF-based ranking (no TF needed)
+import type { IDFStats, Recipe } from "./types.ts";
 
-// types definitions
-export interface Recipe {
-  id: number;
-  title: string;
-  readyInMinutes: number;
-  cuisines: string[];
-  dishTypes: string[];
-  diets: string[];
-  extendedIngredients: Ingredient[];
-
-  // These are for frontend display purposes. 
-  image?: string;
-  imageType?: string;
-  summary?: string;
-  servings?: number;
-  sourceUrl?: string;
-}
-
-export interface Ingredient {
-  id: number;
-  name: string;
-  amount?: number;
-  unit?: string;
-}
-
-// IDF statistics (no TF needed)
-export interface IDFStats {
-  totalDocs: number;
-  docFrequency: { [term: string]: number }; // How many docs contain each term
-}
-
+// This code was generated with the assistance of AI. 
+// includes helper functions for normalizing text and ranking
 // Stop words to exclude from indexing
 const STOP_WORDS = new Set([
-  // Common articles and prepositions
   'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'with',
   'at', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been',
-  
-  // Common modifiers/descriptors (from your list)
   'additional', 'topping', 'flat', 'leaf', 'curly', 'new', 'optional',
-  
-  // Common verbs
   'can', 'use', 'following',
 ]);
 
@@ -66,13 +31,12 @@ const COOKING_MODIFIERS = [
   'rough', 'roughly', 'smooth', 'smoothly'
 ];
 
-// string normalization and processing common words 
 export function normalizeString(str: string | undefined): string {
   return (str || "").toLowerCase().trim();
 }
 
-// UNIFIED normalization for both ingredients and titles
-// Returns the full normalized string (for matching like "chicken breast")
+// normalize text by lowercase, trimming, removing stop words, 
+// handling plural, special characters
 export function normalizeText(text: string): string {
   let normalized = normalizeString(text);
   
@@ -111,15 +75,6 @@ export function normalizeText(text: string): string {
   return words.join(' ').trim();
 }
 
-// For backward compatibility - both use the same normalization
-export function normalizeIngredient(ingredientName: string): string {
-  return normalizeText(ingredientName);
-}
-
-export function normalizeTitle(title: string): string {
-  return normalizeText(title);
-}
-
 // break down cooking time and difficulties
 export function bucketTime(minutes: number): string {
   if (minutes <= 15) return "0-15";
@@ -132,14 +87,13 @@ export function computeDifficulty(recipe: Recipe): string {
   // First check if the title contains difficulty indicators
   const titleLower = recipe.title.toLowerCase();
   
-  // Check for "easy" indicators
+  // look for the indicators of difficulty in the title
   if (titleLower.includes('easy') || 
       titleLower.includes('simple') || 
       titleLower.includes('quick')) {
     return "easy";
   }
   
-  // Check for "hard" indicators
   if (titleLower.includes('hard') || 
       titleLower.includes('difficult') || 
       titleLower.includes('complex') || 
@@ -147,13 +101,12 @@ export function computeDifficulty(recipe: Recipe): string {
     return "hard";
   }
   
-  // Check for "medium" indicators (less common, but possible)
   if (titleLower.includes('medium') || 
       titleLower.includes('intermediate')) {
     return "medium";
   }
   
-  // If no difficulty in title, fall back to ingredient/time heuristic
+  // If no difficulty in title, grade them using ingredients and time
   const numIngredients = recipe.extendedIngredients?.length || 0;
   const time = recipe.readyInMinutes || 0;
   if (numIngredients <= 7 && time <= 30) return "easy";
@@ -182,10 +135,12 @@ export function unionSets(...sets: Set<number>[]): Set<number> {
   return result;
 }
 
+// for API requests
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ranking helpers
 export function calculateIDF(term: string, stats: IDFStats): number {
   const docFreq = stats.docFrequency[term] || 0;
   

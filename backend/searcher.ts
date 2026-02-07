@@ -1,33 +1,16 @@
 // This code was generated with the assistance of AI. It serves as a base for 
 // recipe searching with IDF-based relevance ranking.
-// searcher.ts
+
 import fs from "fs";
 import {
   bucketTime,
   calculateIDFScore,
   intersectSets,
-  normalizeIngredient,
-  normalizeTitle,
+  normalizeText,
   scoreIngredientMatch,
   unionSets,
-  type IDFStats
 } from "./helpers.ts";
-
-interface Filters {
-  cuisines?: string[];
-  diets?: string[];
-  mealTypes?: string[];
-  timeBuckets?: string[];
-  difficulties?: string[];
-}
-
-interface SearchParams {
-  searchQuery?: string;
-  filters?: Filters;
-  ingredientLogic?: 'AND' | 'OR';
-  userIngredients?: string[];  
-  onlyUserIngredients?: boolean;  
-}
+import type { Filters, IDFStats, SearchParams } from "./types.ts";
 
 // load all of our indexes when the program starts 
 class RecipeSearchEngine {
@@ -134,10 +117,10 @@ class RecipeSearchEngine {
   private recipeUsesOnlyUserIngredients(recipe: any, userIngredients: string[]): boolean {
     if (!recipe.extendedIngredients || recipe.extendedIngredients.length === 0) return false;
 
-    const normalizedUserIngredients = new Set(userIngredients.map(ing => normalizeIngredient(ing)));
+    const normalizedUserIngredients = new Set(userIngredients.map(ing => normalizeText(ing)));
 
     return recipe.extendedIngredients.every((recipeIng: any) => {
-      const normalizedRecipeIng = normalizeIngredient(recipeIng.name);
+      const normalizedRecipeIng = normalizeText(recipeIng.name);
       return Array.from(normalizedUserIngredients).some(userIng => 
         normalizedRecipeIng.includes(userIng) || userIng.includes(normalizedRecipeIng)
       );
@@ -228,7 +211,7 @@ class RecipeSearchEngine {
 
     // Normalize title keywords
     const normalizedKeywords = titleKeywords
-      .map(kw => normalizeTitle(kw))
+      .map(kw => normalizeText(kw))
       .flatMap(n => n.split(/\s+/).filter(Boolean));
 
     if (normalizedKeywords.length > 0) {
@@ -239,8 +222,8 @@ class RecipeSearchEngine {
         score += calculateIDFScore(normalizedKeywords, recipe.id, this.indexes.title, this.idfStats) * 10;
 
         // Exact title match bonus
-        const normalizedTitle = normalizeTitle(recipe.title);
-        const normalizedQuery = normalizeTitle(titleKeywords.join(' '));
+        const normalizedTitle = normalizeText(recipe.title);
+        const normalizedQuery = normalizeText(titleKeywords.join(' '));
         if (normalizedTitle.includes(normalizedQuery)) score += 100;
 
         // Simplicity bonus (fewer ingredients = simpler recipe)
@@ -308,7 +291,7 @@ class RecipeSearchEngine {
     // Get recipe IDs from ingredient index
     const ingredientIdSets = ingredientsToFilter
       .map(ing => {
-        const normalized = normalizeIngredient(ing);
+        const normalized = normalizeText(ing);
         const words = normalized.split(/\s+/).filter(Boolean);
         const wordSets = words
           .map(word => this.indexes.ingredient[word])

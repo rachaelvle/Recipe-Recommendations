@@ -7,24 +7,23 @@ import path from "path";
 import {
   bucketTime,
   computeDifficulty,
-  normalizeIngredient,
   normalizeString,
-  normalizeTitle,
+  normalizeText,
   sleep,
-  type IDFStats,
-  type Recipe
 } from "./helpers.ts";
+import type { IDFStats, Recipe } from "./types.ts";
 
 // configs
 const API_KEY = "c0bef96c06fa4e5fbdd9d26fa927e842";
 const RECIPES_PER_REQUEST = 100;
-const TOTAL_RECIPES = 1000;
+const TOTAL_RECIPES = 1500;
 const DELAY_BETWEEN_REQUESTS = 1200;
 
 // where to save the data
 const OUTPUT_DIR = path.join(process.cwd(), "indexes");
 const RECIPES_FILE = path.join(process.cwd(), "recipes.json");
 
+// inverted index structures 
 type InvertedIndex = { [key: string]: Set<number> };
 
 const ingredientIndex: InvertedIndex = {};
@@ -178,7 +177,7 @@ async function main() {
       // Index ingredients - index each word separately
       // This allows "chicken" to match "chicken breast", "chicken thigh", etc.
       recipe.extendedIngredients.forEach(ing => {
-        const normalized = normalizeIngredient(ing.name);
+        const normalized = normalizeText(ing.name);
         const words = normalized.split(/\s+/).filter(w => w.length > 0);
         
         // Index each word separately so partial matches work
@@ -196,7 +195,7 @@ async function main() {
       addToIndex(difficultyIndex, computeDifficulty(recipe), rid);
 
       // Add title tokens to index - index each word separately
-      const titleNormalized = normalizeTitle(recipe.title);
+      const titleNormalized = normalizeText(recipe.title);
       const tokens = titleNormalized.split(/\s+/).filter(t => t.length > 0);
       
       // Index each word separately
