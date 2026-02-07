@@ -1,4 +1,4 @@
-type User = {
-  email: string;
-  password: string;
-};
+// type User = {
+//   email: string;
+//   password: string;
+// };
