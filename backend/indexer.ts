@@ -18,7 +18,7 @@ import {
 // configs
 const API_KEY = "c0bef96c06fa4e5fbdd9d26fa927e842";
 const RECIPES_PER_REQUEST = 100;
-const TOTAL_RECIPES = 300;
+const TOTAL_RECIPES = 1000;
 const DELAY_BETWEEN_REQUESTS = 1200;
 
 // where to save the data
@@ -79,27 +79,6 @@ function calculateIDFStats(recipes: Recipe[], titleIndex: InvertedIndex, ingredi
   return stats;
 }
 
-// had to get the instructions separately (just for UI)
-async function fetchRecipeDetails(recipeId: number): Promise<Partial<Recipe>> {
-  const url = `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`;
-  
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error(`❌ API Error fetching recipe ${recipeId}: ${res.status}`);
-      return {};
-    }
-    const r: any = await res.json();
-    
-    return {
-      instructions: r.instructions || ""
-    };
-  } catch (err) {
-    console.error(`❌ Error fetching recipe ${recipeId}:`, err);
-    return {};
-  }
-}
-
 async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
   const url = `https://api.spoonacular.com/recipes/complexSearch?number=${number}&offset=${offset}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
 
@@ -128,7 +107,6 @@ async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<R
       })),
       image: r.image,
       imageType: r.imageType,
-      instructions: r.instructions || "",  // Try to get from first call
       summary: r.summary || "",
       servings: r.servings,
       sourceUrl: r.sourceUrl || r.spoonacularSourceUrl
@@ -146,39 +124,6 @@ async function main() {
 
   let allRecipes: Recipe[] = loadRecipes();
   const seen = new Set(allRecipes.map(r => r.id));
-
-  // Check for recipes missing instructions and fetch them
-  console.log("🔍 Checking for recipes with missing instructions...");
-  const recipesNeedingInstructions = allRecipes.filter(r => !r.instructions || r.instructions.trim() === "");
-  
-  if (recipesNeedingInstructions.length > 0) {
-    console.log(`Found ${recipesNeedingInstructions.length} recipes missing instructions. Fetching...`);
-    
-    for (let i = 0; i < recipesNeedingInstructions.length; i++) {
-      const recipe = recipesNeedingInstructions[i];
-      console.log(`Fetching instructions for recipe ${i + 1}/${recipesNeedingInstructions.length}: ${recipe.title}`);
-      
-      const details = await fetchRecipeDetails(recipe.id);
-      if (details.instructions) {
-        recipe.instructions = details.instructions;
-        console.log(`✅ Got instructions for ${recipe.title}`);
-      } else {
-        console.log(`⚠️ No instructions available for ${recipe.title}`);
-      }
-      
-      // Rate limiting - wait between requests
-      if (i < recipesNeedingInstructions.length - 1) {
-        await sleep(DELAY_BETWEEN_REQUESTS);
-      }
-    }
-    
-    // Save updated recipes with instructions
-    console.log("💾 Saving recipes with updated instructions...");
-    fs.writeFileSync(RECIPES_FILE, JSON.stringify(allRecipes, null, 2));
-    console.log("✅ Instructions backfilled!");
-  } else {
-    console.log("✅ All recipes already have instructions.");
-  }
 
   // Load existing indexes
   Object.assign(ingredientIndex, loadIndex("ingredientIndex.json"));
@@ -225,17 +170,6 @@ async function main() {
     for (const recipe of recipes) {
       if (seen.has(recipe.id)) continue;
       seen.add(recipe.id);
-      
-      // Check if instructions are missing and fetch if needed
-      if (!recipe.instructions || recipe.instructions.trim() === "") {
-        console.log(`Fetching instructions for new recipe: ${recipe.title}`);
-        const details = await fetchRecipeDetails(recipe.id);
-        if (details.instructions) {
-          recipe.instructions = details.instructions;
-          console.log(`✅ Got instructions`);
-        }
-        await sleep(500); // Short delay for individual fetches
-      }
       
       allRecipes.push(recipe);
 

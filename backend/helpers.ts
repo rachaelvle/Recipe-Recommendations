@@ -14,7 +14,6 @@ export interface Recipe {
   // These are for frontend display purposes. 
   image?: string;
   imageType?: string;
-  instructions?: string;
   summary?: string;
   servings?: number;
   sourceUrl?: string;
