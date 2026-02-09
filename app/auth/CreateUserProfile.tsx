@@ -2,9 +2,9 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-
-
+import { StoreUserProfile } from "../jsonCommands";
 // TODO: add a way to store user data json file? 
+
 
 const Admin = "admin"
 const AdminPass = "password"
@@ -16,6 +16,8 @@ export default function CreateUserProfile() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+
 
 
   const handleSubmit = () => { // takes user input and handles email and password 
@@ -42,8 +44,8 @@ export default function CreateUserProfile() {
     if (email == Admin && password == AdminPass){
       router.push("/home/HomePage") // CHANGE LATER WHEN FINALIZING
     }
-
-    router.push("/auth/UserPreferences")
+    StoreUserProfile(email, confirmPassword); // store the data 
+    router.push("/auth/UserPreferences");
 
   }
 
@@ -87,7 +89,5 @@ export default function CreateUserProfile() {
     </View>
   );
 }
-function setError(arg0: string) {
-  throw new Error("Function not implemented.");
-}
+
 

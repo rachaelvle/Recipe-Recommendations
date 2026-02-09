@@ -95,5 +95,14 @@ export const styles = StyleSheet.create({
     
   },
 
+  ToggleButton: { // generic buttons 
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#c7bebeff",
+  },
 
 })
