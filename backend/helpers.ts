@@ -1,4 +1,4 @@
-import type { IDFStats, Recipe } from "./types.ts";
+import type { Recipe } from "./types.ts";
 
 // This code was generated with the assistance of AI. 
 // includes helper functions for normalizing text and ranking
@@ -115,98 +115,9 @@ export function computeDifficulty(recipe: Recipe): string {
   return "hard";
 }
 
-// set operations for getting results 
-export function toSet(arr: number[]): Set<number> {
-  return new Set(arr);
-}
-
-// for AND
-export function intersectSets(...sets: Set<number>[]): Set<number> {
-  if (sets.length === 0) return new Set();
-  if (sets.length === 1) return sets[0]!;
-  return sets.reduce((acc, set) => {
-    return new Set([...acc].filter(id => set.has(id)));
-  });
-}
-
-// for OR
-export function unionSets(...sets: Set<number>[]): Set<number> {
-  const result = new Set<number>();
-  sets.forEach(set => set.forEach(id => result.add(id)));
-  return result;
-}
-
 // for API requests
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ranking helpers
-export function calculateIDF(term: string, stats: IDFStats): number {
-  const docFreq = stats.docFrequency[term] || 0;
-  
-  // If term doesn't exist in corpus, return 0
-  if (docFreq === 0) return 0;
-  
-  // Standard IDF formula with smoothing
-  // log((N - df + 0.5) / (df + 0.5) + 1)
-  const idf = Math.log((stats.totalDocs - docFreq + 0.5) / (docFreq + 0.5) + 1);
-  
-  return idf;
-}
-
-export function calculateIDFScore(
-  queryTerms: string[],
-  docId: number,
-  termIndex: { [term: string]: number[] },
-  stats: IDFStats
-): number {
-  let totalScore = 0;
-  
-  for (const term of queryTerms) {
-    const recipeIds = termIndex[term];
-    
-    // Skip if term not in index or document doesn't contain term
-    if (!recipeIds || !recipeIds.includes(docId)) continue;
-    
-    // Add IDF score for this term
-    const idf = calculateIDF(term, stats);
-    totalScore += idf;
-  }
-  
-  return totalScore;
-}
-
-export function scoreIngredientMatch(
-  recipe: Recipe,
-  userIngredients: string[]
-): number {
-  if (!recipe.extendedIngredients || recipe.extendedIngredients.length === 0) {
-    return 0;
-  }
-  
-  const normalizedUserIngredients = new Set(
-    userIngredients.map(ing => normalizeText(ing))
-  );
-  
-  let matchCount = 0;
-  
-  for (const recipeIng of recipe.extendedIngredients) {
-    const normalizedRecipeIng = normalizeText(recipeIng.name);
-    
-    // Check for exact match or partial match
-    const matches = Array.from(normalizedUserIngredients).some(userIng => 
-      normalizedRecipeIng.includes(userIng) || userIng.includes(normalizedRecipeIng)
-    );
-    
-    if (matches) {
-      matchCount++;
-    }
-  }
-  
-  // Score is the ratio of matched ingredients to total recipe ingredients
-  // This prioritizes recipes that use MORE of what the user has
-  return matchCount / recipe.extendedIngredients.length;
 }
 
 export function normalizeDiet(diet: string): string {

@@ -356,8 +356,6 @@ class EnhancedRecipeSearchEngine {
       console.log(`🚫 Allergy filter: ${beforeCount} → ${results.length} recipes (removed ${beforeCount - results.length})`);
     }
 
-    // the "onlyUserIngredients" hard filter was removed
-
     // RELEVANCE RANKING with boosters
     console.log("\n🎯 Applying relevance scoring...");
     
@@ -558,26 +556,6 @@ function displayResults(results: Recipe[], limit = 10) {
     console.log(`   📋 ${recipe.dishTypes.join(', ') || 'N/A'}`);
     console.log(`   🔗 ${recipe.sourceUrl || 'N/A'}\n`);
   });
-}
-
-// ---------- CLI ----------
-function main() {
-  const args = process.argv.slice(2);
-  const params: EnhancedSearchParams = { filters: {} };
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--search') params.searchQuery = args[++i];
-    if (args[i] === '--user') params.userId = parseInt(args[++i]);
-  }
-
-  const searchEngine = new EnhancedRecipeSearchEngine();
-  const results = searchEngine.search(params);
-  displayResults(results);
-  searchEngine.close();
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
 }
 
 export { EnhancedRecipeSearchEngine };
