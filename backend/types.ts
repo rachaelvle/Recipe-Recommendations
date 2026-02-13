@@ -48,5 +48,4 @@ export interface SearchParams {
   filters?: Filters;
   ingredientLogic?: 'AND' | 'OR';
   userIngredients?: string[];  
-  onlyUserIngredients?: boolean;  
 }

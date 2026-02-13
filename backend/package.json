@@ -13,8 +13,10 @@
   "dependencies": {
     "@types/node": "^25.1.0",
     "@types/node-fetch": "^2.6.13",
+    "better-sqlite3": "^12.6.2",
     "fs": "^0.0.1-security",
     "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7",
     "typescript": "^5.9.3"
   },
   "devDependencies": {

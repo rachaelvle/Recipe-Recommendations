@@ -1,25 +1,20 @@
 // create the inverted index using SQLite
 // this code was written with the assistance of AI
+// same code as indexer.ts but it takes from the json with data the API already populated
 
 import Database from "better-sqlite3";
-import fetch from "node-fetch";
+import fs from "fs";
 import path from "path";
 import {
   bucketTime,
   computeDifficulty,
   normalizeDiet,
   normalizeText,
-  sleep
 } from "./helpers.ts";
 import type { Recipe } from "./types.ts";
 
 // configs
-const API_KEY = "API KEY";
-const RECIPES_PER_REQUEST = 100;
-const ADDITIONAL_RECIPES = 500; // How many NEW recipes to fetch
-const DELAY_BETWEEN_REQUESTS = 1200;
-
-// where to save the data
+const RECIPES_JSON_FILE = path.join(process.cwd(), "recipes.json");
 const DB_FILE = path.join(process.cwd(), "recipes.db");
 
 // Initialize SQLite database with inverted index tables
@@ -57,7 +52,10 @@ function initializeDatabase(): Database.Database {
     )
   `);
 
+  // ============================================
   // INVERTED INDEX TABLES
+  // ============================================
+  
   // Cuisine index: cuisine -> recipe IDs
   db.exec(`
     CREATE TABLE IF NOT EXISTS idx_cuisine (
@@ -294,138 +292,60 @@ function calculateAndSaveIDFStats(db: Database.Database) {
   console.log(`   ✅ IDF stats: totalDocs=${totalDocs.count}, uniqueTerms=${allStats.length}`);
 }
 
-// Fetch recipes from API
-async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
-  const url = `https://api.spoonacular.com/recipes/complexSearch?number=${number}&offset=${offset}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error(`❌ API Error: ${res.status} ${res.statusText}`);
-      return [];
-    }
-    const data: any = await res.json();
-    
-    console.log(`API Response: totalResults=${data.totalResults}, returned=${data.results?.length || 0}`);
-
-    const basicRecipes = (data.results || []).map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      readyInMinutes: r.readyInMinutes,
-      cuisines: r.cuisines || [],
-      dishTypes: r.dishTypes || [],
-      diets: r.diets || [],
-      extendedIngredients: (r.extendedIngredients || []).map((ing: any) => ({
-        id: ing.id,
-        name: ing.name,
-        amount: ing.amount,
-        unit: ing.unit
-      })),
-      image: r.image,
-      imageType: r.imageType,
-      summary: r.summary || "",
-      servings: r.servings,
-      sourceUrl: r.sourceUrl || r.spoonacularSourceUrl
-    }));
-
-    return basicRecipes;
-  } catch (err) {
-    console.error(`Fetch error:`, err);
-    return [];
+// Load recipes from JSON file
+function loadRecipesFromJSON(): Recipe[] {
+  console.log(`📖 Reading recipes from ${RECIPES_JSON_FILE}...`);
+  
+  if (!fs.existsSync(RECIPES_JSON_FILE)) {
+    throw new Error(`recipes.json file not found at ${RECIPES_JSON_FILE}`);
   }
+  
+  const fileContent = fs.readFileSync(RECIPES_JSON_FILE, 'utf-8');
+  const recipes: Recipe[] = JSON.parse(fileContent);
+  
+  console.log(`✅ Loaded ${recipes.length} recipes from JSON file`);
+  
+  return recipes;
 }
 
 async function main() {
   // Initialize SQLite database
   const db = initializeDatabase();
   
-  // Check existing recipe count
-  const countResult = db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
-  const initialCount = countResult.count;
+  // Load recipes from JSON file
+  const recipes = loadRecipesFromJSON();
   
-  console.log(`📊 Current recipes in database: ${initialCount}`);
-  console.log(`🎯 Target: Add ${ADDITIONAL_RECIPES} new recipes`);
+  console.log(`🔄 Starting to index ${recipes.length} recipes...`);
   
-  let newRecipesAdded = 0;
-  let offset = initialCount; // Start from current recipe count to avoid duplicates
-  let apiCallsWithoutNewRecipes = 0;
-  const MAX_ATTEMPTS_WITHOUT_NEW = 20; // Stop if we make 20 calls without finding new recipes
-
-  while (newRecipesAdded < ADDITIONAL_RECIPES) {
-    const toFetch = Math.min(RECIPES_PER_REQUEST, ADDITIONAL_RECIPES - newRecipesAdded);
-    console.log(`\n🔄 Fetching ${toFetch} recipes from offset ${offset}...`);
-    const recipes = await fetchRecipes(offset, toFetch);
-    
-    if (!recipes.length) {
-      console.log(`⚠️ No more recipes available from API`);
-      break;
-    }
-    
-    console.log(`✅ Received ${recipes.length} recipes from API`);
-
-    // Track how many are actually new
-    let batchNewCount = 0;
-
-    // Use transaction for batch operations (MUCH faster)
-    const insertBatch = db.transaction((recipeBatch: Recipe[]) => {
-      for (const recipe of recipeBatch) {
-        // Check if recipe already exists
-        const exists = db.prepare(`SELECT id FROM recipes WHERE id = ?`).get(recipe.id);
-        if (exists) {
-          console.log(`   ⏭️  Recipe ${recipe.id} already exists, skipping...`);
-          continue;
-        }
-        
-        // Save recipe to SQLite
-        saveRecipeToDB(db, recipe);
-        
-        // Build inverted indexes
-        buildInvertedIndexes(db, recipe);
-        
-        batchNewCount++;
-      }
-    });
-
-    insertBatch(recipes);
-
-    newRecipesAdded += batchNewCount;
-    
-    console.log(`📈 New recipes added this batch: ${batchNewCount}`);
-    console.log(`📊 Total new recipes added: ${newRecipesAdded}/${ADDITIONAL_RECIPES}`);
-    
-    // Track attempts without new recipes
-    if (batchNewCount === 0) {
-      apiCallsWithoutNewRecipes++;
-      console.log(`⚠️  No new recipes in this batch (attempt ${apiCallsWithoutNewRecipes}/${MAX_ATTEMPTS_WITHOUT_NEW})`);
+  // Use transaction for batch operations (MUCH faster)
+  const insertBatch = db.transaction((recipeBatch: Recipe[]) => {
+    for (let i = 0; i < recipeBatch.length; i++) {
+      const recipe = recipeBatch[i];
       
-      if (apiCallsWithoutNewRecipes >= MAX_ATTEMPTS_WITHOUT_NEW) {
-        console.log(`❌ Made ${MAX_ATTEMPTS_WITHOUT_NEW} API calls without finding new recipes. Stopping.`);
-        break;
+      // Save recipe to SQLite
+      saveRecipeToDB(db, recipe);
+      
+      // Build inverted indexes
+      buildInvertedIndexes(db, recipe);
+      
+      // Progress indicator every 100 recipes
+      if ((i + 1) % 100 === 0) {
+        console.log(`   📈 Indexed ${i + 1}/${recipeBatch.length} recipes...`);
       }
-    } else {
-      // Reset counter if we found new recipes
-      apiCallsWithoutNewRecipes = 0;
     }
-    
-    offset += recipes.length;
-    await sleep(DELAY_BETWEEN_REQUESTS);
-  }
+  });
+
+  insertBatch(recipes);
 
   // Get final count
-  const finalCountResult = db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
-  const finalCount = finalCountResult.count;
-  
-  console.log(`\n✅ Indexing complete!`);
-  console.log(`   Initial recipes: ${initialCount}`);
-  console.log(`   New recipes added: ${newRecipesAdded}`);
-  console.log(`   Final total: ${finalCount}`);
+  const finalCount = db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
+  console.log(`✅ Successfully indexed ${finalCount.count} recipes`);
 
   // Calculate and save IDF statistics
-  console.log("\n📊 Recalculating IDF statistics for all recipes...");
   calculateAndSaveIDFStats(db);
 
   db.close();
-  console.log("✅ Done!");
+  console.log("✅ Full SQLite indexing complete!");
 }
 
 main().catch(console.error);

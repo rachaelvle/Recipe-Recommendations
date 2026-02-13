@@ -2,6 +2,7 @@ import type { IDFStats, Recipe } from "./types.ts";
 
 // This code was generated with the assistance of AI. 
 // includes helper functions for normalizing text and ranking
+
 // Stop words to exclude from indexing
 const STOP_WORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'with',
@@ -206,4 +207,12 @@ export function scoreIngredientMatch(
   // Score is the ratio of matched ingredients to total recipe ingredients
   // This prioritizes recipes that use MORE of what the user has
   return matchCount / recipe.extendedIngredients.length;
+}
+
+export function normalizeDiet(diet: string): string {
+  const lower = diet.toLowerCase();
+  if (lower === "lacto ovo vegetarian" || lower === "vegetarian") {
+    return "vegetarian"; // group both under "vegetarian"
+  }
+  return lower;
 }
