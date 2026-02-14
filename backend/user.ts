@@ -2,37 +2,13 @@
 // Stores user profiles, allergies, and preferences for personalized recipe search
 // code was written with the assitance of AI
 
+import type { User, UserAllergy, UserIngredient, UserPreferences } from "./types.ts";
+
 import Database from "better-sqlite3";
 import crypto from "crypto";
 import path from "path";
 
 const USER_DB_FILE = path.join(process.cwd(), "users.db");
-
-// Type definitions
-export interface User {
-  id: number;
-  username: string;
-}
-
-export interface UserPreferences {
-  userId: number;
-  // Preference categories
-  defaultCuisines?: string[];      // e.g., ['italian', 'mexican']
-  defaultDiets?: string[];          // e.g., ['vegetarian']
-  defaultMealTypes?: string[];      // e.g., ['dinner', 'lunch']
-  defaultTimeBuckets?: string[];    // e.g., ['0-15', '15-30']
-  defaultDifficulties?: string[];   // e.g., ['easy']
-}
-
-export interface UserAllergy {
-  userId: number;
-  allergen: string;  // e.g., 'peanuts', 'shellfish', 'dairy'
-}
-
-export interface UserIngredient {
-  userId: number;
-  ingredient: string;  // e.g., 'tomato', 'chicken', 'rice'
-}
 
 export class UserDatabaseManager {
   private db: Database.Database;

@@ -46,6 +46,31 @@ export interface Filters {
 export interface SearchParams {
   searchQuery?: string;
   filters?: Filters;
-  ingredientLogic?: 'AND' | 'OR';
   userIngredients?: string[];  
+}
+
+// Type definitions
+export interface User {
+  id: number;
+  username: string;
+}
+
+export interface UserPreferences {
+  userId: number;
+  // Preference categories
+  defaultCuisines?: string[];      // e.g., ['italian', 'mexican']
+  defaultDiets?: string[];          // e.g., ['vegetarian']
+  defaultMealTypes?: string[];      // e.g., ['dinner', 'lunch']
+  defaultTimeBuckets?: string[];    // e.g., ['0-15', '15-30']
+  defaultDifficulties?: string[];   // e.g., ['easy']
+}
+
+export interface UserAllergy {
+  userId: number;
+  allergen: string;  // e.g., 'peanuts', 'shellfish', 'dairy'
+}
+
+export interface UserIngredient {
+  userId: number;
+  ingredient: string;  // e.g., 'tomato', 'chicken', 'rice'
 }
