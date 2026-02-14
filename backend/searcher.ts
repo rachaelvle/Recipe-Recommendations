@@ -419,12 +419,14 @@ class EnhancedRecipeSearchEngine {
     const totalDocs = totalDocsResult.count;
     
     // Collect all preferences that should boost (implicit + user defaults)
+    // Filter out empty strings so they don't break matching (e.g. difficulties: ['easy', ''])
+    const filterEmpty = (arr: string[] | undefined) => (arr ?? []).filter(Boolean).map(s => s.trim()).filter(Boolean);
     const boostPreferences = {
-      cuisines: implicitPreferences.cuisines || userPreferences?.defaultCuisines || [],
-      diets: implicitPreferences.diets || userPreferences?.defaultDiets || [],
-      mealTypes: implicitPreferences.mealTypes || userPreferences?.defaultMealTypes || [],
-      timeBuckets: implicitPreferences.timeBuckets || userPreferences?.defaultTimeBuckets || [],
-      difficulties: implicitPreferences.difficulties || userPreferences?.defaultDifficulties || []
+      cuisines: filterEmpty(implicitPreferences.cuisines || userPreferences?.defaultCuisines || []),
+      diets: filterEmpty(implicitPreferences.diets || userPreferences?.defaultDiets || []),
+      mealTypes: filterEmpty(implicitPreferences.mealTypes || userPreferences?.defaultMealTypes || []),
+      timeBuckets: filterEmpty(implicitPreferences.timeBuckets || userPreferences?.defaultTimeBuckets || []),
+      difficulties: filterEmpty(implicitPreferences.difficulties || userPreferences?.defaultDifficulties || [])
     };
     
     const normalizedKeywords = titleSearchKeywords.map(kw => normalizeText(kw)).filter(Boolean);
@@ -493,25 +495,23 @@ class EnhancedRecipeSearchEngine {
       }
 
       // IMPLICIT PREFERENCE BOOSTERS
-      // Cuisine boost (+5 per match - lowest priority)
+      // Cuisine boost (+7 per match - lowest priority)
       if (boostPreferences.cuisines?.length) {
-        const cuisineMatches = recipe.cuisines.filter(c => 
-          boostPreferences.cuisines?.some(pref => pref.toLowerCase() === c.toLowerCase())
+        const cuisineMatches = recipe.cuisines.filter(c =>
+          boostPreferences.cuisines?.some(pref => pref.toLowerCase().trim() === (c ?? '').toLowerCase().trim())
         );
-        if (cuisineMatches.length > 0) {
-          const cuisineBoost = cuisineMatches.length * 5;
-          score += cuisineBoost;
-          scoringDetails.push(`cuisine:${cuisineMatches.join(',')}(+${cuisineBoost})`);
-        }
+        const cuisineBoost = cuisineMatches.length * 7;
+        score += cuisineBoost;
+        scoringDetails.push(cuisineMatches.length > 0 ? `cuisine:${cuisineMatches.join(',')}(+${cuisineBoost})` : `cuisine:(+0)`);
       }
 
-      // Diet boost (+20 per match - highest priority)
+      // Diet boost (+25 per match - highest priority)
       if (boostPreferences.diets?.length) {
         const dietMatches = recipe.diets.filter(d => 
           boostPreferences.diets?.some(pref => pref.toLowerCase() === d.toLowerCase())
         );
         if (dietMatches.length > 0) {
-          const dietBoost = dietMatches.length * 20;
+          const dietBoost = dietMatches.length * 25;
           score += dietBoost;
           scoringDetails.push(`diet:${dietMatches.join(',')}(+${dietBoost})`);
         }
@@ -530,19 +530,19 @@ class EnhancedRecipeSearchEngine {
       }
 
       // TIME BUCKET BOOST - full points if recipe is within bucket or shorter
-    if (boostPreferences.timeBuckets?.length) {
-      const recipeMinutes = recipe.readyInMinutes;
+      if (boostPreferences.timeBuckets?.length) {
+        const recipeMinutes = recipe.readyInMinutes;
 
-      boostPreferences.timeBuckets.forEach(prefBucket => {
-        const [prefMin, prefMax] = prefBucket.split('-').map(Number);
+        for (const prefBucket of boostPreferences.timeBuckets) {
+          const [prefMin, prefMax] = prefBucket.split("-").map(Number);
 
-        if (recipeMinutes <= prefMax) { // full points if under or within the bucket
-          score += 25;
-          scoringDetails.push(`timeBucket:${prefBucket}(+25)`);
+          if (recipeMinutes <= prefMax) {
+            score += 20;
+            scoringDetails.push(`timeBucket:${prefBucket}(+25)`);
+            break; // 🔥 stop after first boost
+          }
         }
-        // do nothing if recipeMinutes > prefMax
-      });
-    }
+      }
 
       // Difficulty boost (+8 if matches)
       if (boostPreferences.difficulties?.length) {

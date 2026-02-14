@@ -73,21 +73,21 @@ async function runTests() {
 
   // Add pantry ingredients
   console.log("\n🥕 Adding pantry ingredients:");
-  const pantry = ["chicken", "rice", "tomato", "garlic", "onion", "olive oil", "pasta", "cheese"];
+  const pantry = ["chicken", "rice", "tomato", "garlic", "onion", "olive oil", "pasta", "coconut", "pepper"];
   pantry.forEach(ing => userDb.addIngredient(testUserId, ing));
   console.log(`   - ${pantry.join(', ')}`);
 
   // Set preferences
   console.log("\n⚙️ Setting preferences:");
-  userDb.addCuisine(testUserId, "italian");
-  userDb.addCuisine(testUserId, "mexican");
+  userDb.addCuisine(testUserId, "japanese");
+  userDb.addCuisine(testUserId, "thai");
   userDb.addDiet(testUserId, "gluten free");
   userDb.updatePreferences(testUserId, {
     defaultMealTypes: ["dinner"],
     defaultTimeBuckets: ["15-30", "30-45"],
     defaultDifficulties: ["easy", "medium"]
   });
-  console.log("   - Cuisines: italian, mexican");
+  console.log("   - Cuisines: japanese, thai");
   console.log("   - Diet: gluten free");
   console.log("   - Meal type: dinner");
   console.log("   - Time: 15-45 minutes");
@@ -97,50 +97,49 @@ async function runTests() {
   // TEST 7: Search with user profile
   // ============================================
   console.log("\n" + "=".repeat(70));
-  console.log("TEST 7: Search with User Profile");
+  console.log("TEST: Search with User Profile");
   console.log("=".repeat(70));
-  console.log("Query: 'dinner'");
+  console.log("Query: 'curry dinner'");
   console.log(`User: test_user (ID: ${testUserId})`);
-  console.log("Expected: Italian/Mexican, gluten free, 15-45 min");
+  console.log("Expected: Japanese/Thai, gluten free, 15-45 min");
   console.log("Expected: No peanuts/shellfish");
   console.log("Expected: Boost for pantry ingredients\n");
 
   const test7 = searchEngine.search({
-    searchQuery: "dinner",
+    searchQuery: "curry dinner",
     userId: testUserId
   });
   displayRecipes(test7);
 
   // ============================================
-  // TEST 8: Search overriding user preferences
+  // TEST
   // ============================================
   console.log("\n" + "=".repeat(70));
-  console.log("TEST 8: Override User Preferences");
+  console.log("TEST");
   console.log("=".repeat(70));
-  console.log("Query: 'chinese chicken'");
+  console.log("Query: 'pasta'");
   console.log(`User: test_user (ID: ${testUserId})`);
-  console.log("Expected: Chinese (overrides Italian/Mexican preference)");
   console.log("Expected: Still no peanuts/shellfish (allergies always apply)\n");
 
   const test8 = searchEngine.search({
-    searchQuery: "chinese chicken",
+    searchQuery: "pasta",
     userId: testUserId
   });
   displayRecipes(test8);
 
   // ============================================
-  // TEST 10: Explicit filters
+  // TEST: Explicit filters
   // ============================================
   console.log("\n" + "=".repeat(70));
-  console.log("TEST 10: Explicit Filter Parameters");
+  console.log("TEST: Explicit Filter Parameters");
   console.log("=".repeat(70));
-  console.log("Query: 'pasta'");
-  console.log("Filters: cuisines=['italian'], diets=['vegetarian']\n");
+  console.log("Query: 'soup'");
+  console.log("Filters: cuisines=['asian'], diets=['vegetarian']\n");
 
   const test10 = searchEngine.search({
-    searchQuery: "pasta",
+    searchQuery: "soup",
     filters: {
-      cuisines: ["italian"],
+      cuisines: ["asian"],
       diets: ["vegetarian"]
     }
   });
