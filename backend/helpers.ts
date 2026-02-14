@@ -8,7 +8,7 @@ const STOP_WORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'for', 'with',
   'at', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'been',
   'additional', 'topping', 'flat', 'leaf', 'curly', 'new', 'optional',
-  'can', 'use', 'following',
+  'can', 'use', 'following','idea'
 ]);
 
 // Cooking modifiers to remove from all text
