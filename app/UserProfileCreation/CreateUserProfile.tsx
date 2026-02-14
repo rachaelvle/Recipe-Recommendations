@@ -2,7 +2,7 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { StoreUserProfile } from "../jsonCommands";
+import { StoreCurrentUserID, StoreUserProfile } from "../jsonCommands";
 // TODO: add a way to store user data json file? 
 
 
@@ -42,10 +42,13 @@ export default function CreateUserProfile() {
 
     // just for testing right now will make actual account checking maybe :3
     if (email == Admin && password == AdminPass){
-      router.push("/home/HomePage") // CHANGE LATER WHEN FINALIZING
+      router.push('/about') // CHANGE LATER WHEN FINALIZING
     }
     StoreUserProfile(email, confirmPassword); // store the data 
-    router.push("/auth/UserPreferences");
+    
+    StoreCurrentUserID(email); // store the ID for later use 
+
+    router.push('/UserProfileCreation/RequestUserName');
 
   }
 

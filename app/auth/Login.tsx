@@ -2,9 +2,8 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-
-const Admin = "admin"
-const AdminPass = "password"
+import { loadUser } from "../jsonCommands";
+// create a password checking with a simple password / email hardcoded list 
 
 export default function Login() {
 
@@ -14,16 +13,24 @@ export default function Login() {
   const [error, setError] = useState("");
 
 
-  const handleSubmit = () => { // takes user input and handles email and password 
+  const handleSubmit = async () => { // takes user input and handles email and password 
     if (!email || !password) 
     {
       setError("Please enter email and password");
       return;
     } // no input 
+
+    const user = await loadUser(email); // pass in the provided email
+    if (!user || user.password != password) 
+    {
+      setError("Invalid Credentials");
+      return;
+    }
+
     setError(""); // clear error
 
     // just for testing right now will make actual account checking maybe :3
-    if (email == Admin && password == AdminPass){
+    if (email == user.email && password == user.password){
       router.push("/home/HomePage") // CHANGE LATER WHEN FINALIZING
     }
 

@@ -13,7 +13,7 @@ export default function questionnaire() {
       router.push("/auth/Login");
     } else {
       // first time -> go questionnaire
-      router.push("/auth/CreateUserProfile");
+      router.push("/UserProfileCreation/CreateUserProfile");
     }
   }
 

@@ -1,8 +1,9 @@
 import { styles } from "@/styles/SimpleStyleSheet";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import "../jsonCommands";
-import { updatedUserRestrictions } from "../jsonCommands";
+import { LoadCurrentUserID, updatedUserRestrictions } from "../jsonCommands";
 
 
 const options = ["Vegan","Gluten-Free", "Carnivore", "Lactose-Interolant", "Vegetarian", "Pescetarian", "Peanut Allergy", "Seafood Allergy"];
@@ -29,8 +30,9 @@ export default function UserPreferences() {
         
         // reference the map, return a list of things they can't eat 
         let noFood: string[] = [] // retVal
+
         for (const item of restrict) {
-            noFood.push(...DietaryRestrictions[item]);
+            noFood.push(...DietaryRestrictions[item]); // item in list, check map add list together of checked boxes 
         }
 
         return noFood;
@@ -73,7 +75,13 @@ export default function UserPreferences() {
 
         <View style={styles.footer}>
             <Pressable style={({ pressed }) => [styles.YesButton, pressed && { opacity: 0.85 }]} //   "User chose:", choices
-                onPress={async () => {const choices = Array.from(selected).map(i => options[i]); updatedUserRestrictions(formRestrictionsList(choices)); }}>
+                onPress={async () => {
+                                        const choices = Array.from(selected).map(i => options[i]); 
+                                        const userID = await LoadCurrentUserID();
+                                        updatedUserRestrictions( userID, formRestrictionsList(choices)); 
+                                        router.push('/UserProfileCreation/UserPreferences')
+                                        //PrintStoredUser('a');
+                                      }}>
             <Text style={styles.Text}>CONT</Text>
             </Pressable>
         </View>
