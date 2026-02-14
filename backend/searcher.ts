@@ -31,6 +31,46 @@ class EnhancedRecipeSearchEngine {
   }
 
   /**
+   * Get IDF (Inverse Document Frequency) score for a term
+   * Returns how rare/distinctive a term is across all recipes
+   * Higher score = rarer term = more important for search relevance
+   */
+  private getIDF(term: string, totalDocs: number): number {
+    const idfRow = this.db.prepare(`
+      SELECT doc_frequency FROM idf_stats WHERE term = ?
+    `).get(term) as any;
+    
+    if (!idfRow) return 0; // Term not in database
+    
+    const docFrequency = idfRow.doc_frequency;
+    return Math.log(totalDocs / docFrequency);
+  }
+
+  /**
+   * Calculate IDF score for title keywords only
+   * Only applies to words that actually appear in the recipe's title
+   */
+  private calculateTitleIDF(recipeId: number, titleKeywords: string[], totalDocs: number): number {
+    let totalScore = 0;
+    
+    // Get all words in this recipe's title
+    const titleRow = this.db.prepare(`
+      SELECT word FROM idx_title WHERE recipeId = ?
+    `).all(recipeId) as any[];
+    
+    const recipeWords = new Set(titleRow.map(row => row.word));
+    
+    // For each keyword, if it's in the title, add its IDF score
+    for (const keyword of titleKeywords) {
+      if (recipeWords.has(keyword)) {
+        totalScore += this.getIDF(keyword, totalDocs);
+      }
+    }
+    
+    return totalScore;
+  }
+
+  /**
    * Get a single recipe by ID
    */
   private getRecipeById(id: number): Recipe | null {
@@ -94,12 +134,12 @@ class EnhancedRecipeSearchEngine {
    * Parse natural language query and extract implicit preferences
    */
   private parseSearchQuery(query: string) {
-    const normalized = query.toLowerCase().trim();
+    const normalized = normalizeText(query);
 
     const patterns = {
       cuisine: /\b(italian|mexican|chinese|indian|french|thai|japanese|greek|american|mediterranean|korean|spanish|vietnamese)\b/g,
-      diet: /\b(vegetarian|vegan|gluten free|dairy free|paleolithic|keto|pescatarian|primal)\b/g,
-      mealType: /\b(breakfast|lunch|dinner|dessert|snack|appetizer|side dish|main course|brunch|soup)\b/g,
+      diet: /\b(vegetarian|vegan|glutenfree|dairyfree|paleolithic|keto|pescatarian|primal)\b/g,
+      mealType: /\b(breakfast|lunch|dinner|dessert|snack|appetizer|sidedish|maincourse|brunch|soup)\b/g,
       difficulty: /\b(easy|medium|hard|simple|quick|difficult)\b/,
       time: /\b(quick|fast|under (\d+) min(?:ute)?s?|in (\d+) min(?:ute)?s?)\b/
     };
@@ -135,22 +175,25 @@ class EnhancedRecipeSearchEngine {
       if (bucket) implicitPreferences.timeBuckets = [bucket];
     }
 
-    const words = normalized.split(/\s+/);
+    // Build sets of words to exclude from search
     const difficultyWords = ['easy', 'medium', 'hard', 'simple', 'quick', 'difficult'];
     const querySpecificWords = new Set([
-      'recipe', 'recipes', 'make', 'cooking',
+      'recipe', 'recipes', 'make', 'cooking', 'with',
       ...cuisines,
       ...diets.map(d => d.split(' ')).flat(),
-      ...mealTypes.map(m => m.split(' ')).flat()
-    ]);
-    
-    const ingredientExcludeWords = new Set([
-      ...querySpecificWords,
+      ...mealTypes.map(m => m.split(' ')).flat(),
       ...difficultyWords
     ]);
     
-    const remainingWords = words.filter(w => !querySpecificWords.has(w));
-    const ingredientWords = words.filter(w => !ingredientExcludeWords.has(w));
+    // Extract search terms (keep everything that's not a query-specific word)
+    const words = normalized.split(/\s+/).filter(w => !querySpecificWords.has(w) && w.length > 0);
+    
+    // Keep the whole query as one search term for better matching
+    const searchTerm = words.join(' ');
+    const ingredientWords = searchTerm ? [searchTerm] : [];
+    
+    // For title keywords, use all relevant words
+    const remainingWords = words;
 
     return {
       ingredients: ingredientWords,
@@ -214,19 +257,34 @@ class EnhancedRecipeSearchEngine {
       
       if (profile) {
         // Extract allergies - ALWAYS applied as hard filter
-        userAllergies = profile.allergies.map(a => a.allergen);
+        userAllergies = profile.allergies.map(a => normalizeText(a.allergen));
         if (userAllergies.length > 0) {
           console.log(`🚫 User allergies (ALWAYS filtered): [${userAllergies.join(', ')}]`);
         }
 
         // Extract user's available ingredients
-        userIngredients = profile.ingredients.map(i => i.ingredient);
+        userIngredients = profile.ingredients.map(i => normalizeText(i.ingredient));
         if (userIngredients.length > 0) {
           console.log(`🥕 User's pantry: [${userIngredients.join(', ')}]`);
         }
 
         // Extract preferences - will be used as boosters
         userPreferences = profile.preferences;
+        if (userPreferences) {
+          // Normalize preference arrays for consistent matching
+          if (userPreferences.defaultCuisines) {
+            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map(c => normalizeText(c));
+          }
+          if (userPreferences.defaultDiets) {
+            userPreferences.defaultDiets = userPreferences.defaultDiets.map(d => normalizeText(d));
+          }
+          if (userPreferences.defaultMealTypes) {
+            userPreferences.defaultMealTypes = userPreferences.defaultMealTypes.map(m => normalizeText(m));
+          }
+          if (userPreferences.defaultDifficulties) {
+            userPreferences.defaultDifficulties = userPreferences.defaultDifficulties.map(d => normalizeText(d));
+          }
+        }
       }
     }
 
@@ -261,36 +319,33 @@ class EnhancedRecipeSearchEngine {
     const conditions: string[] = [];
     const sqlParams: any[] = [];
 
-    // Ingredient filter for SQL (when searching by ingredients or user has ingredients)
-    const ingredientsToFilter = ingredientsToUse.length > 0 ? ingredientsToUse : searchIngredients;
-    const ingredientLogic = params.ingredientLogic || 'OR';
+    // Ingredient/Title filter for SQL 
+    // Search in both title AND ingredients using OR logic
+    // This means: Find recipes that contain ANY of the search terms
+    // Example: "chocolate cake" finds recipes with "chocolate" OR "cake" in title/ingredients
+    // Example: "chicken peppers" finds recipes with "chicken" OR "peppers" in title/ingredients
 
-    if (ingredientsToFilter.length > 0) {
-      const normalizedIngredients = ingredientsToFilter.map(ing => {
+    if (searchIngredients.length > 0) {
+      // Collect all words from all search terms
+      const allWords: string[] = [];
+      
+      searchIngredients.forEach(ing => {
         const normalized = normalizeText(ing);
-        return normalized.split(/\s+/).filter(Boolean);
-      }).flat();
-
-      if (normalizedIngredients.length > 0) {
-        if (ingredientLogic === 'AND') {
-          const placeholders = normalizedIngredients.map(() => '?').join(',');
-          conditions.push(`
-            id IN (
-              SELECT recipeId 
-              FROM idx_ingredients 
-              WHERE word IN (${placeholders})
-              GROUP BY recipeId
-              HAVING COUNT(DISTINCT word) = ${normalizedIngredients.length}
-            )
-          `);
-          sqlParams.push(...normalizedIngredients);
-          console.log(`Ingredient filter (AND): Must have ALL of [${ingredientsToFilter.join(', ')}]`);
-        } else {
-          const placeholders = normalizedIngredients.map(() => '?').join(',');
-          conditions.push(`id IN (SELECT DISTINCT recipeId FROM idx_ingredients WHERE word IN (${placeholders}))`);
-          sqlParams.push(...normalizedIngredients);
-          console.log(`Ingredient filter (OR): Must have ANY of [${ingredientsToFilter.join(', ')}]`);
-        }
+        const words = normalized.split(/\s+/).filter(Boolean);
+        allWords.push(...words);
+      });
+      
+      if (allWords.length > 0) {
+        const placeholders = allWords.map(() => '?').join(',');
+        // Match if ANY word appears in title OR ingredients
+        conditions.push(`(
+          id IN (SELECT DISTINCT recipeId FROM idx_title WHERE word IN (${placeholders}))
+          OR id IN (SELECT DISTINCT recipeId FROM idx_ingredients WHERE word IN (${placeholders}))
+        )`);
+        sqlParams.push(...allWords);
+        sqlParams.push(...allWords); // Add twice for both parts of OR
+        
+        console.log(`Search filter (OR logic - title OR ingredients): [${searchIngredients.join(', ')}]`);
       }
     }
 
@@ -359,6 +414,10 @@ class EnhancedRecipeSearchEngine {
     // RELEVANCE RANKING with boosters
     console.log("\n🎯 Applying relevance scoring...");
     
+    // Get total document count for IDF calculation
+    const totalDocsResult = this.db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
+    const totalDocs = totalDocsResult.count;
+    
     // Collect all preferences that should boost (implicit + user defaults)
     const boostPreferences = {
       cuisines: implicitPreferences.cuisines || userPreferences?.defaultCuisines || [],
@@ -369,6 +428,7 @@ class EnhancedRecipeSearchEngine {
     };
     
     const normalizedKeywords = titleSearchKeywords.map(kw => normalizeText(kw)).filter(Boolean);
+    
     // Don't apply time-of-day bonus if user specified a meal type (either explicitly or implicitly)
     const shouldApplyTimeBonus = !explicitFilters.mealTypes?.length && !boostPreferences.mealTypes?.length;
     
@@ -388,13 +448,20 @@ class EnhancedRecipeSearchEngine {
       const normalizedTitle = normalizeText(recipe.title);
       const scoringDetails: string[] = [];
       
-      // Title keyword matches (+25 per keyword - high priority for explicit search terms)
-      normalizedKeywords.forEach(keyword => {
-        if (normalizedTitle.includes(keyword)) {
-          score += 25;
-          scoringDetails.push(`title:${keyword}(+25)`);
+      // TITLE IDF SCORE - Weighted by term rarity
+      // Rare words in title get higher scores
+      if (normalizedKeywords.length > 0) {
+        const titleIDFScore = this.calculateTitleIDF(recipe.id, normalizedKeywords, totalDocs);
+        
+        // Scale IDF to be comparable to other scores (multiply by 25)
+        // This makes an average IDF score similar to the old +25 per keyword
+        const scaledIDF = titleIDFScore * 25;
+        
+        if (scaledIDF > 0) {
+          score += scaledIDF;
+          scoringDetails.push(`title_idf(+${scaledIDF.toFixed(1)})`);
         }
-      });
+      }
       
       // Time of day contextual bonus
       if (shouldApplyTimeBonus) {
@@ -462,14 +529,20 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // Time bucket boost (+25 if matches - high priority for duration)
-      if (boostPreferences.timeBuckets?.length) {
-        const recipeBucket = bucketTime(recipe.readyInMinutes);
-        if (boostPreferences.timeBuckets.includes(recipeBucket)) {
+      // TIME BUCKET BOOST - full points if recipe is within bucket or shorter
+    if (boostPreferences.timeBuckets?.length) {
+      const recipeMinutes = recipe.readyInMinutes;
+
+      boostPreferences.timeBuckets.forEach(prefBucket => {
+        const [prefMin, prefMax] = prefBucket.split('-').map(Number);
+
+        if (recipeMinutes <= prefMax) { // full points if under or within the bucket
           score += 25;
-          scoringDetails.push(`timeBucket:${recipeBucket}(+8)`);
+          scoringDetails.push(`timeBucket:${prefBucket}(+25)`);
         }
-      }
+        // do nothing if recipeMinutes > prefMax
+      });
+    }
 
       // Difficulty boost (+8 if matches)
       if (boostPreferences.difficulties?.length) {

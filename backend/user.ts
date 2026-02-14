@@ -93,9 +93,7 @@ export class UserDatabaseManager {
     // Create indexes for faster lookups
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_user_allergies_userId ON user_allergies(userId);
-      CREATE INDEX IF NOT EXISTS idx_user_allergies_allergen ON user_allergies(allergen);
       CREATE INDEX IF NOT EXISTS idx_user_ingredients_userId ON user_ingredients(userId);
-      CREATE INDEX IF NOT EXISTS idx_user_ingredients_ingredient ON user_ingredients(ingredient);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
     `);
   }
