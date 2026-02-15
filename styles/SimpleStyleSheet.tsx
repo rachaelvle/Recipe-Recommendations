@@ -4,19 +4,24 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
 
   container: {
-    backgroundColor:"#25292e",
+    backgroundColor:"##f4f4f4",
     flex: 1,
+    gap:10,
     justifyContent: "center",
     alignItems: "center",
   },
   HeaderText: {
-    color: "white",
+    fontWeight: "800",
+    color: "#white",
     fontSize: 25,
     textAlign: "center",
     padding: 24, 
   },
   Text: {
-    color:"white"
+    fontSize: 18,
+    fontWeight: "800",
+    color: "white",
+    
   },
     buttonRow: {
     flexDirection: "row", // 👈 makes them LEFT + RIGHT
@@ -24,7 +29,7 @@ export const styles = StyleSheet.create({
   },
 
   StartButton: {
-    backgroundColor: "#39afafff",
+    backgroundColor: "#ff5e65",
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 10,
@@ -40,18 +45,20 @@ export const styles = StyleSheet.create({
    YesButton: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#12fd02ff",
+    backgroundColor: "#ff5e65",
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 10,
   },
   input: {
-  width: "80%",   // 👈 this is it
-  backgroundColor: "#333",
-  color: "white",
-  padding: 14,
-  borderRadius: 10,
-  marginBottom: 16,
+    width: "80%",
+    backgroundColor: 'transparent',
+    color: "black",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "#ff5e65",
   },
   error: {
     color: "#ff6b6b",
@@ -59,25 +66,27 @@ export const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // User Preferences Style Section 
-  preferenceContainer: { flex: 1, backgroundColor: "#3d3838ff" },
+  // User Allegies Style Section 
+  preferenceContainer: { flex: 1, backgroundColor: "#f4f4f4" },
 
   scroll: { flex: 1 }, // takes up all space 
-  scrollContent: { padding: 30, gap: 25, paddingTop: 100,}, 
+  scrollContent: { padding: 30, gap: 25, paddingTop: 50,}, 
 
   selected: {
-    backgroundColor: "#20b24b",
-    borderColor: "#c7bebeff",
+    backgroundColor: "#ff5e65",
+    borderColor: "#FA2533",
     borderWidth: 2,
   },
+
   footer: { // background for the footer 
     height: 90,
     borderTopWidth: 1,
     borderTopColor: "#a99696ff",
     padding: 16,
     justifyContent: "center",
-    backgroundColor: "rgba(48, 54, 61, 1)ff",
+    backgroundColor: "rgb(242, 245, 248)ff",
   },
+
   button: { // generic buttons 
     height: 52,
     borderRadius: 12,
@@ -87,22 +96,37 @@ export const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#c7bebeff",
   },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "700", },
+
+  buttonText: { color: "black", fontSize: 18, fontWeight: "700", },
+
+  selectedText: { color: "#fff",},
+
+  BannerText: {
+    fontWeight: "800",
+    paddingTop: 90,
+    color: "black",
+    fontSize: 25,
+    textAlign: "center",
+  },
 
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
-    
   },
 
   ToggleButton: { // generic buttons 
     height: 80,
-    borderRadius: 12,
-    backgroundColor: "transparent",
+    borderRadius: 30,
+    backgroundColor: "#transparent",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#c7bebeff",
+    borderColor: "#gray",
   },
+
+
+  // UserProfile Layout 
+  
+  
 
 })

@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -76,6 +78,13 @@ export default function Index() {
               <Text style={styles.buttonText}>Search</Text>
             )}
           </TouchableOpacity>
+
+            {/* for getting to intro page for testing */}
+          <Pressable  onPress={() => router.push('/Introduction')}>
+                  <Text>Get Started</Text>
+          </Pressable>
+
+
         </View>
         {searchError && (
           <Text style={styles.error}>{searchError}</Text>

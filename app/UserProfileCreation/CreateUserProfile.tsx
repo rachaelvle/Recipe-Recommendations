@@ -1,27 +1,20 @@
+import { api } from "@/lib/api";
 import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { StoreCurrentUserID, StoreUserProfile } from "../jsonCommands";
-// TODO: add a way to store user data json file? 
-
-
-const Admin = "admin"
-const AdminPass = "password"
+import { StoreCurrentUserID } from "../../Utils/jsonCommands";
 
 export default function CreateUserProfile() {
 
   // store user input to be later checked for login 
-  const [email, setEmail] = useState("");
+  const [username, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-
-
-
-  const handleSubmit = () => { // takes user input and handles email and password 
-    if (!email) 
+  const handleSubmit = async () => { // takes user input and handles email and password 
+    if (!username) 
     {
       setError("Please enter valid email");
       return;
@@ -40,29 +33,31 @@ export default function CreateUserProfile() {
     }
     setError("") // clear error
 
-    // just for testing right now will make actual account checking maybe :3
-    if (email == Admin && password == AdminPass){
-      router.push('/about') // CHANGE LATER WHEN FINALIZING
+    // Rachaels API import account created in the sqlite datbase
+    try {
+      const response = await api.register(username,confirmPassword);
+      console.log('User created:', response.user);
+      StoreCurrentUserID(response.user.id) // STORE USER ID TO PASS ONTO NEXT PAGE ON THE STACK
+      
+      router.push('/UserProfileCreation/GetUserAllergies'); // get the user's dietary restrictions 
+      
+      } catch (error) {
+        setError("User already exists");
+        console.error('Registration failed:', error);
     }
-    StoreUserProfile(email, confirmPassword); // store the data 
-    
-    StoreCurrentUserID(email); // store the ID for later use 
-
-    router.push('/UserProfileCreation/RequestUserName');
-
   }
 
     return (
     <View style={styles.container}>
-      <Text style={styles.HeaderText}>Please Enter your Email and Password</Text>
+      <Text style={styles.HeaderText}>Lets make your account</Text>
 
       <TextInput
-        placeholder="Email"
+        placeholder="Username"
         placeholderTextColor="#aaa"
         style={styles.input}
-        value={email}
+        value={username}
         autoCapitalize="none"
-        onChangeText={setEmail} // sets email when user sets email 
+        onChangeText={setUserName} // sets email when user sets email 
         keyboardType="email-address"
       />
 
