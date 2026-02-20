@@ -1,0 +1,23 @@
+{
+  "1": {
+    "id": 1,
+    "title": "Creamy Chicken Pasta",
+    "readyInMinutes": 30,
+    "image": "https://spoonacular.com/recipeImages/640803-312x231.jpg",
+    "ingredients": ["pasta", "chicken", "cream", "garlic"]
+  },
+  "2": {
+    "id": 2,
+    "title": "Avocado Toast",
+    "readyInMinutes": 10,
+    "image": "https://spoonacular.com/recipeImages/716429-312x231.jpg",
+    "ingredients": ["bread", "avocado", "salt", "pepper"]
+  },
+  "3": {
+    "id": 3,
+    "title": "Chocolate Cake",
+    "readyInMinutes": 60,
+    "image": "https://spoonacular.com/recipeImages/637876-312x231.jpg",
+    "ingredients": ["flour", "sugar", "cocoa", "eggs"]
+  }
+}
