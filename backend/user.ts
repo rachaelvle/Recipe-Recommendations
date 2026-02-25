@@ -57,11 +57,11 @@ export class UserDatabaseManager {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         userId INTEGER PRIMARY KEY,
-        defaultCuisines TEXT,           -- JSON array
-        defaultDiets TEXT,              -- JSON array
-        defaultMealTypes TEXT,          -- JSON array
-        defaultTimeBuckets TEXT,        -- JSON array
-        defaultDifficulties TEXT,       -- JSON array
+        defaultCuisines TEXT,           -- JSON array // user input at creation
+        defaultDiets TEXT,              -- JSON array // user input at creation
+        defaultMealTypes TEXT,          -- JSON array // not used at creation atm 
+        defaultTimeBuckets TEXT,        -- JSON array // not used at creation atm 
+        defaultDifficulties TEXT,       -- JSON array // not used at creation atm
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
       )
     `);

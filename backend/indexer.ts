@@ -2,6 +2,7 @@
 // this code was written with the assistance of AI
 
 import Database from "better-sqlite3";
+import fs from "fs";
 import fetch from "node-fetch";
 import path from "path";
 import {
@@ -14,13 +15,14 @@ import {
 import type { Recipe } from "./types.ts";
 
 // configs
-const API_KEY = "API KEY";
+const API_KEY = "KEY";
 const RECIPES_PER_REQUEST = 100;
 const ADDITIONAL_RECIPES = 500; // How many NEW recipes to fetch
 const DELAY_BETWEEN_REQUESTS = 1200;
 
 // where to save the data
 const DB_FILE = path.join(process.cwd(), "recipes.db");
+const RECIPES_JSON_FILE = path.join(process.cwd(), "recipes.json");
 
 // Initialize SQLite database with inverted index tables
 function initializeDatabase(): Database.Database {
@@ -260,6 +262,26 @@ function buildInvertedIndexes(db: Database.Database, recipe: Recipe) {
   insertDifficulty.run(computeDifficulty(recipe), rid);
 }
 
+// Append new recipes to recipes.json (merge by id, then write)
+function saveRecipesToJSON(newRecipes: Recipe[]) {
+  if (newRecipes.length === 0) return;
+  let existing: Recipe[] = [];
+  if (fs.existsSync(RECIPES_JSON_FILE)) {
+    const raw = fs.readFileSync(RECIPES_JSON_FILE, "utf-8");
+    try {
+      existing = JSON.parse(raw);
+    } catch {
+      console.warn("⚠️ recipes.json parse failed, starting fresh");
+    }
+  }
+  const byId = new Map<number, Recipe>();
+  existing.forEach((r) => byId.set(r.id, r));
+  newRecipes.forEach((r) => byId.set(r.id, r));
+  const merged = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+  fs.writeFileSync(RECIPES_JSON_FILE, JSON.stringify(merged, null, 2), "utf-8");
+  console.log(`📄 Wrote ${merged.length} recipes to ${RECIPES_JSON_FILE} (+${newRecipes.length} new)`);
+}
+
 // Calculate and save IDF statistics
 function calculateAndSaveIDFStats(db: Database.Database) {
   const totalDocs = db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
@@ -294,9 +316,11 @@ function calculateAndSaveIDFStats(db: Database.Database) {
   console.log(`   ✅ IDF stats: totalDocs=${totalDocs.count}, uniqueTerms=${allStats.length}`);
 }
 
-// Fetch recipes from API
-async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
-  const url = `https://api.spoonacular.com/recipes/complexSearch?number=${number}&offset=${offset}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
+// Fetch random recipes from API (bypasses the offset=1000 limit)
+async function fetchRecipes(number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
+  // /recipes/random max is 100 per call
+  const batchSize = Math.min(number, 100);
+  const url = `https://api.spoonacular.com/recipes/random?number=${batchSize}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
 
   try {
     const res = await fetch(url);
@@ -305,10 +329,12 @@ async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<R
       return [];
     }
     const data: any = await res.json();
-    
-    console.log(`API Response: totalResults=${data.totalResults}, returned=${data.results?.length || 0}`);
 
-    const basicRecipes = (data.results || []).map((r: any) => ({
+    // /recipes/random returns { recipes: [...] } not { results: [...] }
+    const results = data.recipes || [];
+    console.log(`API Response: returned=${results.length}`);
+
+    return results.map((r: any) => ({
       id: r.id,
       title: r.title,
       readyInMinutes: r.readyInMinutes,
@@ -327,8 +353,6 @@ async function fetchRecipes(offset = 0, number = RECIPES_PER_REQUEST): Promise<R
       servings: r.servings,
       sourceUrl: r.sourceUrl || r.spoonacularSourceUrl
     }));
-
-    return basicRecipes;
   } catch (err) {
     console.error(`Fetch error:`, err);
     return [];
@@ -347,14 +371,14 @@ async function main() {
   console.log(`🎯 Target: Add ${ADDITIONAL_RECIPES} new recipes`);
   
   let newRecipesAdded = 0;
-  let offset = initialCount; // Start from current recipe count to avoid duplicates
+  const allNewRecipes: Recipe[] = []; // collect for recipes.json
   let apiCallsWithoutNewRecipes = 0;
   const MAX_ATTEMPTS_WITHOUT_NEW = 20; // Stop if we make 20 calls without finding new recipes
 
   while (newRecipesAdded < ADDITIONAL_RECIPES) {
     const toFetch = Math.min(RECIPES_PER_REQUEST, ADDITIONAL_RECIPES - newRecipesAdded);
-    console.log(`\n🔄 Fetching ${toFetch} recipes from offset ${offset}...`);
-    const recipes = await fetchRecipes(offset, toFetch);
+    console.log(`\n🔄 Fetching ${toFetch} random recipes...`);
+    const recipes = await fetchRecipes(toFetch);
     
     if (!recipes.length) {
       console.log(`⚠️ No more recipes available from API`);
@@ -382,6 +406,7 @@ async function main() {
         // Build inverted indexes
         buildInvertedIndexes(db, recipe);
         
+        allNewRecipes.push(recipe);
         batchNewCount++;
       }
     });
@@ -407,7 +432,6 @@ async function main() {
       apiCallsWithoutNewRecipes = 0;
     }
     
-    offset += recipes.length;
     await sleep(DELAY_BETWEEN_REQUESTS);
   }
 
@@ -419,6 +443,9 @@ async function main() {
   console.log(`   Initial recipes: ${initialCount}`);
   console.log(`   New recipes added: ${newRecipesAdded}`);
   console.log(`   Final total: ${finalCount}`);
+
+  // Write new recipes to recipes.json so migration/backup stays in sync
+  saveRecipesToJSON(allNewRecipes);
 
   // Calculate and save IDF statistics
   console.log("\n📊 Recalculating IDF statistics for all recipes...");
