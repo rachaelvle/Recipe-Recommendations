@@ -10,8 +10,8 @@ import {
   normalizeDiet,
   normalizeText,
   sleep
-} from "./helpers.ts";
-import type { Recipe } from "./types.ts";
+} from "./helpers";
+import type { Recipe } from "./types";
 
 // configs
 const API_KEY = "API KEY";

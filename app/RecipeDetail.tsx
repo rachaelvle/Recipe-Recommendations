@@ -20,26 +20,61 @@ export default function RecipeDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // We kept the manual cross-off state since it's a nice UI feature
-  // and requires ZERO backend connection!
+  // State to track which ingredients the user has crossed off (using name instead of ID)
   const [crossedIngredients, setCrossedIngredients] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchRecipeDetail = async () => {
+  // Hardcoded for project demo purposes!
+  const currentUserId = 1;
+
+useEffect(() => {
+    const fetchDetailAndPantry = async () => {
       try {
         setLoading(true);
-        // Only fetch the recipe details, no more user profile fetching!
-        const recipeData = await api.getRecipeDetail(Number(id));
+        
+        // Fetch both the recipe AND the user's profile at the same time
+        const [recipeData, userProfile] = await Promise.all([
+          api.getRecipeDetail(Number(id)),
+          api.getUserProfile ? api.getUserProfile(currentUserId).catch(() => null) : Promise.resolve(null)
+        ]);
+        
         setRecipe(recipeData);
+
+        console.log("USER PROFILE FETCHED:", userProfile);
+
+        // Auto-cross off ingredients based on user's pantry
+        if (userProfile && (userProfile as any).ingredients) {
+          const pantryNames = (userProfile as any).ingredients.map((i: any) => 
+            i.ingredient.toLowerCase().trim()
+          );
+          
+          console.log("PANTRY NAMES:", pantryNames);
+
+          const alreadyOwnedNames = recipeData.extendedIngredients
+            .filter((ing: any) => {
+              if (!ing.name) return false;
+              const recipeIngName = ing.name.toLowerCase();
+              return pantryNames.some((pName: string) => 
+                recipeIngName.includes(pName) || pName.includes(recipeIngName)
+              );
+            })
+            .map((ing: any) => ing.name);
+
+          console.log("MATCHED INGREDIENTS:", alreadyOwnedNames);
+          setCrossedIngredients(alreadyOwnedNames);
+        }
+
+      // vvv THESE WERE THE MISSING LINES vvv
       } catch (err) {
         console.error("Fetch Error:", err);
         setError("Could not load recipe details.");
       } finally {
         setLoading(false);
       }
+      // ^^^ ----------------------------- ^^^
+
     };
 
-    if (id) fetchRecipeDetail();
+    if (id) fetchDetailAndPantry();
   }, [id]);
 
   // Clean HTML tags from the backend summary string
@@ -120,12 +155,13 @@ export default function RecipeDetail() {
           {/* Ingredients */}
           <Text style={styles.sectionTitle}>Ingredients</Text>
           {recipe.extendedIngredients?.map((ing, index) => {
+            // Check if the ingredient NAME is in our crossed-off list
             const isCrossed = crossedIngredients.includes(ing.name);
             
             return (
               <TouchableOpacity 
-                // Using index in the key fixes the duplicate ingredient React warning
-                key={`${ing.id}-${index}`} 
+                // Fallback to index if the ID is ever missing
+                key={ing.id || index} 
                 style={[styles.ingredientRow, isCrossed && styles.ingredientRowCrossed]}
                 onPress={() => toggleIngredient(ing.name)}
                 activeOpacity={0.6}

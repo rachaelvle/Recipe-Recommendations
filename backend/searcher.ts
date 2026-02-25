@@ -1,15 +1,13 @@
 // search engine and methods
 // written using AI assistance 
-// filters out allergies and boosts recipes according to filters
-
 import Database from "better-sqlite3";
 import path from "path";
 import {
   bucketTime,
   normalizeText
-} from "./helpers.ts";
-import type { Filters, Recipe, SearchParams } from "./types.ts";
-import { UserDatabaseManager } from "./user.ts";
+} from "./helpers";
+import type { Filters, Recipe, SearchParams } from "./types";
+import { UserDatabaseManager } from "./user";
 
 const DB_FILE = path.join(process.cwd(), "recipes.db");
 
@@ -73,7 +71,7 @@ class EnhancedRecipeSearchEngine {
   /**
    * Get a single recipe by ID
    */
-  private getRecipeById(id: number): Recipe | null {
+  public getRecipeById(id: number): Recipe | null {
     const row = this.db.prepare(`SELECT * FROM recipes WHERE id = ?`).get(id) as any;
     
     if (!row) return null;
@@ -246,7 +244,7 @@ class EnhancedRecipeSearchEngine {
     let implicitPreferences: Partial<Filters> = {};
     let userAllergies: string[] = [];
     let userIngredients: string[] = [];
-    let userPreferences = null;
+    let userPreferences: any = null;
 
     console.log("🔍 Original search query:", params.searchQuery);
 
@@ -273,16 +271,16 @@ class EnhancedRecipeSearchEngine {
         if (userPreferences) {
           // Normalize preference arrays for consistent matching
           if (userPreferences.defaultCuisines) {
-            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map(c => normalizeText(c));
+            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map((c: string) => normalizeText(c));
           }
           if (userPreferences.defaultDiets) {
-            userPreferences.defaultDiets = userPreferences.defaultDiets.map(d => normalizeText(d));
+            userPreferences.defaultDiets = userPreferences.defaultDiets.map((d: string) => normalizeText(d));
           }
           if (userPreferences.defaultMealTypes) {
-            userPreferences.defaultMealTypes = userPreferences.defaultMealTypes.map(m => normalizeText(m));
+            userPreferences.defaultMealTypes = userPreferences.defaultMealTypes.map((m: string) => normalizeText(m));
           }
           if (userPreferences.defaultDifficulties) {
-            userPreferences.defaultDifficulties = userPreferences.defaultDifficulties.map(d => normalizeText(d));
+            userPreferences.defaultDifficulties = userPreferences.defaultDifficulties.map((d: string) => normalizeText(d));
           }
         }
       }
@@ -320,13 +318,7 @@ class EnhancedRecipeSearchEngine {
     const sqlParams: any[] = [];
 
     // Ingredient/Title filter for SQL 
-    // Search in both title AND ingredients using OR logic
-    // This means: Find recipes that contain ANY of the search terms
-    // Example: "chocolate cake" finds recipes with "chocolate" OR "cake" in title/ingredients
-    // Example: "chicken peppers" finds recipes with "chicken" OR "peppers" in title/ingredients
-
     if (searchIngredients.length > 0) {
-      // Collect all words from all search terms
       const allWords: string[] = [];
       
       searchIngredients.forEach(ing => {
@@ -337,13 +329,12 @@ class EnhancedRecipeSearchEngine {
       
       if (allWords.length > 0) {
         const placeholders = allWords.map(() => '?').join(',');
-        // Match if ANY word appears in title OR ingredients
         conditions.push(`(
           id IN (SELECT DISTINCT recipeId FROM idx_title WHERE word IN (${placeholders}))
           OR id IN (SELECT DISTINCT recipeId FROM idx_ingredients WHERE word IN (${placeholders}))
         )`);
         sqlParams.push(...allWords);
-        sqlParams.push(...allWords); // Add twice for both parts of OR
+        sqlParams.push(...allWords); 
         
         console.log(`Search filter (OR logic - title OR ingredients): [${searchIngredients.join(', ')}]`);
       }
@@ -393,7 +384,7 @@ class EnhancedRecipeSearchEngine {
     if (conditions.length > 0) {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
-    query += ` LIMIT 500`; // Get more candidates since we're doing relevance ranking
+    query += ` LIMIT 500`;
 
     console.log("Executing SQL query...");
     const rows = this.db.prepare(query).all(...sqlParams) as any[];
@@ -414,12 +405,9 @@ class EnhancedRecipeSearchEngine {
     // RELEVANCE RANKING with boosters
     console.log("\n🎯 Applying relevance scoring...");
     
-    // Get total document count for IDF calculation
     const totalDocsResult = this.db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
     const totalDocs = totalDocsResult.count;
     
-    // Collect all preferences that should boost (implicit + user defaults)
-    // Filter out empty strings so they don't break matching (e.g. difficulties: ['easy', ''])
     const filterEmpty = (arr: string[] | undefined) => (arr ?? []).filter(Boolean).map(s => s.trim()).filter(Boolean);
     const boostPreferences = {
       cuisines: filterEmpty(implicitPreferences.cuisines || userPreferences?.defaultCuisines || []),
@@ -430,11 +418,8 @@ class EnhancedRecipeSearchEngine {
     };
     
     const normalizedKeywords = titleSearchKeywords.map(kw => normalizeText(kw)).filter(Boolean);
-    
-    // Don't apply time-of-day bonus if user specified a meal type (either explicitly or implicitly)
     const shouldApplyTimeBonus = !explicitFilters.mealTypes?.length && !boostPreferences.mealTypes?.length;
     
-    // Normalize user's available ingredients
     const normalizedUserIngredients = ingredientsToUse.length > 0
       ? new Set(ingredientsToUse.map(ing => normalizeText(ing)))
       : new Set<string>();
@@ -445,18 +430,14 @@ class EnhancedRecipeSearchEngine {
       console.log("✨ Boosting based on:", boostPreferences);
     }
     
-    results = results.map(recipe => {
+    // NEW VARIABLE HERE: We save the scored objects to scoredResults instead of overwriting results
+    const scoredResults = results.map(recipe => {
       let score = 0;
       const normalizedTitle = normalizeText(recipe.title);
       const scoringDetails: string[] = [];
       
-      // TITLE IDF SCORE - Weighted by term rarity
-      // Rare words in title get higher scores
       if (normalizedKeywords.length > 0) {
         const titleIDFScore = this.calculateTitleIDF(recipe.id, normalizedKeywords, totalDocs);
-        
-        // Scale IDF to be comparable to other scores (multiply by 25)
-        // This makes an average IDF score similar to the old +25 per keyword
         const scaledIDF = titleIDFScore * 25;
         
         if (scaledIDF > 0) {
@@ -465,7 +446,6 @@ class EnhancedRecipeSearchEngine {
         }
       }
       
-      // Time of day contextual bonus
       if (shouldApplyTimeBonus) {
         const timeBonus = this.getTimeOfDayBonus(recipe);
         if (timeBonus > 0) {
@@ -474,18 +454,11 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // INGREDIENT COVERAGE BOOST - recipes using user's ingredients
       if (normalizedUserIngredients.size > 0) {
         const coverage = this.calculateIngredientCoverage(recipe, normalizedUserIngredients);
         const matchCount = Math.round(coverage * recipe.extendedIngredients.length);
-        
-        // Base score: +4 per matching ingredient
         const ingredientMatchScore = matchCount * 4;
-        
-        // Coverage bonus: recipes that use a higher % of user's ingredients get extra boost
-        // 100% coverage = +10 bonus (capped), 50% = +5, etc.
         const coverageBonus = Math.min(coverage * 10, 10);
-        
         const totalIngredientScore = ingredientMatchScore + coverageBonus;
         
         if (totalIngredientScore > 0) {
@@ -494,8 +467,6 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // IMPLICIT PREFERENCE BOOSTERS
-      // Cuisine boost (+7 per match - lowest priority)
       if (boostPreferences.cuisines?.length) {
         const cuisineMatches = recipe.cuisines.filter(c =>
           boostPreferences.cuisines?.some(pref => pref.toLowerCase().trim() === (c ?? '').toLowerCase().trim())
@@ -505,7 +476,6 @@ class EnhancedRecipeSearchEngine {
         scoringDetails.push(cuisineMatches.length > 0 ? `cuisine:${cuisineMatches.join(',')}(+${cuisineBoost})` : `cuisine:(+0)`);
       }
 
-      // Diet boost (+25 per match - highest priority)
       if (boostPreferences.diets?.length) {
         const dietMatches = recipe.diets.filter(d => 
           boostPreferences.diets?.some(pref => pref.toLowerCase() === d.toLowerCase())
@@ -517,7 +487,6 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // Meal type boost (+10 per match)
       if (boostPreferences.mealTypes?.length) {
         const mealMatches = recipe.dishTypes.filter(m => 
           boostPreferences.mealTypes?.some(pref => pref.toLowerCase() === m.toLowerCase())
@@ -529,7 +498,6 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // TIME BUCKET BOOST - full points if recipe is within bucket or shorter
       if (boostPreferences.timeBuckets?.length) {
         const recipeMinutes = recipe.readyInMinutes;
 
@@ -539,16 +507,16 @@ class EnhancedRecipeSearchEngine {
           if (recipeMinutes <= prefMax) {
             score += 20;
             scoringDetails.push(`timeBucket:${prefBucket}(+25)`);
-            break; // 🔥 stop after first boost
+            break; 
           }
         }
       }
 
-      // Difficulty boost (+8 if matches)
       if (boostPreferences.difficulties?.length) {
-        if (boostPreferences.difficulties.includes(recipe.difficulty)) {
+        // Casting recipe to any to bypass missing 'difficulty' property in type definition
+        if (boostPreferences.difficulties.includes((recipe as any).difficulty)) {
           score += 8;
-          scoringDetails.push(`difficulty:${recipe.difficulty}(+5)`);
+          scoringDetails.push(`difficulty:${(recipe as any).difficulty}(+5)`);
         }
       }
       
@@ -559,25 +527,20 @@ class EnhancedRecipeSearchEngine {
       };
     }).sort((a, b) => b.score - a.score);
 
-    // Log top scoring recipes
-    console.log("\n📊 Top scored recipes:");
-    results.slice(0, 5).forEach((item, idx) => {
+    // FIXED: Use scoredResults for iteration and mapping
+    scoredResults.slice(0, 5).forEach((item, idx) => {
       console.log(`${idx + 1}. ${item.recipe.title} - Score: ${item.score.toFixed(1)}`);
       if (item.scoringDetails) {
         console.log(`   Scoring: ${item.scoringDetails}`);
       }
     });
 
-    // Return just the recipes
-    const finalResults = results.map(item => item.recipe).slice(0, 10);
+    const finalResults = scoredResults.map(item => item.recipe).slice(0, 10);
 
     console.log("\n✅ Final number of recipes returned:", finalResults.length);
     return finalResults;
   }
 
-  /**
-   * Get time of day score bonus for ranking
-   */
   private getTimeOfDayBonus(recipe: Recipe): number {
     const now = new Date();
     const hour = now.getHours();
@@ -616,7 +579,7 @@ class EnhancedRecipeSearchEngine {
   }
 }
 
-// ---------- DISPLAY HELPERS ----------
+// ---------- display helpers ----------
 function displayResults(results: Recipe[], limit = 10) {
   console.log(`\n📊 Found ${results.length} recipes\n`);
   if (!results.length) return;
