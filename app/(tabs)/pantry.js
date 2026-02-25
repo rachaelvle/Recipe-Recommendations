@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { usePantry } from '../context/PantryContext';
+import { usePantry } from '../../src/context/PantryContext';
+import { styles as globalStyles } from "@/styles/SimpleStyleSheet";
 
 export default function PantryScreen() {
   const [text, setText] = useState('');
@@ -27,7 +28,7 @@ export default function PantryScreen() {
         <Text style={styles.itemText}>{item}</Text>
       </View>
       <TouchableOpacity onPress={() => removeFromPantry(item)}>
-        <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+        <Ionicons name="trash-outline" size={20} color="#39afafff" />
       </TouchableOpacity>
     </View>
   );
@@ -36,7 +37,7 @@ export default function PantryScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <ActivityIndicator size="large" color="#39afafff" />
         <Text style={{marginTop: 10, color: '#888'}}>Loading your kitchen...</Text>
       </View>
     );
@@ -46,7 +47,7 @@ export default function PantryScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      <View style={styles.header}>
+<View style={styles.header}>
         <Text style={styles.headerTitle}>My Pantry 🥕</Text>
         <Text style={styles.headerSubtitle}>
           {pantryIngredients.length} items collected
@@ -95,41 +96,99 @@ export default function PantryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9F9F9' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9F9F9' },
-  
-  header: { paddingHorizontal: 24, marginTop: 10, marginBottom: 20 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#333' },
-  headerSubtitle: { fontSize: 14, color: '#888', marginTop: 4 },
-
-  listContent: { paddingHorizontal: 24, paddingBottom: 100 },
-  
-  itemCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFF', padding: 16, borderRadius: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2
+  container: {
+    flex: 1,
+    backgroundColor: '#25292e',
+    paddingHorizontal: 24,
   },
-  itemLeft: { flexDirection: 'row', alignItems: 'center' },
-  bullet: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF6B6B', marginRight: 12 },
-  itemText: { fontSize: 16, fontWeight: '600', color: '#333' },
-
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: -50 },
-  emptyText: { fontSize: 20, fontWeight: '700', color: '#333', marginTop: 20 },
-  emptySubText: { fontSize: 14, color: '#888', marginTop: 8 },
-
+  // Matches the header area in your JSX
+  header: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#AAA',
+    marginBottom: 10,
+  },
+  // Fixed the missing brace here! 
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -100,
+  }, 
+  emptyText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 20,
+  },
+  emptySubText: {
+    color: '#AAA',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+  },
+  // Styled the ingredient cards to match the Home Screen cards
+  itemCard: {
+    flexDirection: 'row',
+    backgroundColor: '#333',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  itemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#39afafff', // Teammate's teal
+    marginRight: 12,
+  },
+  itemText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Styled the input area at the bottom
   inputWrapper: {
-    position: 'absolute', bottom: 30, width: '100%',
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 24
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'ios' ? 20 : 10,
+    gap: 12,
   },
   input: {
-    flex: 1, backgroundColor: '#FFF', paddingVertical: 15, paddingHorizontal: 20,
-    borderRadius: 30, marginRight: 15, fontSize: 16,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5
+    flex: 1,
+    height: 56,
+    backgroundColor: '#333',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    color: '#FFFFFF',
   },
   addBtn: {
-    width: 54, height: 54, borderRadius: 27, backgroundColor: '#FF6B6B',
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#FF6B6B', shadowOpacity: 0.4, shadowRadius: 10, elevation: 5
+    width: 56,
+    height: 56,
+    backgroundColor: '#39afafff', // Teammate's teal
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#25292e',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
