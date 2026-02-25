@@ -21,12 +21,19 @@ interface Recipe {
   ingredients?: string[];
 }
 
-// Define our filters blueprint so TypeScript doesn't think they are 'never'
 interface Filters {
   difficulty: string | null;
   maxTime: string | null;
   cuisine: string | null;
+  dietary: string[];
 }
+
+const [activeFilters, setActiveFilters] = useState<Filters>({ 
+    difficulty: null, 
+    maxTime: null, 
+    cuisine: null,
+    dietary: [] 
+  });
 
 const RECIPE_MAP = require('../../assets/data/recipes_map.json'); 
 const ALL_RECIPES_DATA: Recipe[] = Object.values(RECIPE_MAP); // Tell TS this is an array of Recipes
@@ -88,6 +95,42 @@ const FilterDropdown = ({
   );
 };
 
+const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: (id: string) => void }) => {
+  const options = [
+    { id: 'vegan', label: 'Vegan', icon: '🌿' },
+    { id: 'vegetarian', label: 'Vegetarian', icon: '🥗' },
+    { id: 'pescatarian', label: 'Pescatarian', icon: '🐟' },
+    { id: 'carnivore', label: 'Carnivore', icon: '🥩' },
+    { id: 'gluten-free', label: 'Gluten Free', icon: '🌾' },
+    { id: 'lactose-intolerant', label: 'Dairy Free', icon: '🧀' },
+    { id: 'peanut-allergy', label: 'No Peanuts', icon: '🥜' },
+    { id: 'seafood-allergy', label: 'No Shellfish', icon: '🦐' },
+  ];
+
+  return (
+    <View style={styles.dietSection}>
+      <Text style={styles.dropdownLabel}>Dietary & Allergies</Text>
+      <View style={styles.chipContainer}>
+        {options.map((opt) => {
+          const isActive = selected.includes(opt.id);
+          return (
+            <TouchableOpacity 
+              key={opt.id} 
+              style={[styles.dietChip, isActive && styles.dietChipActive]}
+              onPress={() => onToggle(opt.id)}
+            >
+              <Text style={styles.chipEmoji}>{opt.icon}</Text>
+              <Text style={[styles.dietChipText, isActive && styles.dietChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 export default function Index() { 
   const router = useRouter();
   const { pantryIngredients } = usePantry();
@@ -100,9 +143,10 @@ export default function Index() {
   const [activeFilters, setActiveFilters] = useState<Filters>({ 
     difficulty: null, 
     maxTime: null, 
-    cuisine: null 
+    cuisine: null,
+    dietary: [] 
   });
-  
+
   // We apply our Recipe[] blueprint here!
   const [results, setResults] = useState<Recipe[]>(ALL_RECIPES_DATA);
   const [greeting, setGreeting] = useState<string>('Good Morning');
@@ -120,14 +164,11 @@ export default function Index() {
       .catch(() => setHealth("error"));
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     let filtered = [...ALL_RECIPES_DATA];
 
     if (query) {
       filtered = filtered.filter((r: Recipe) => r.title.toLowerCase().includes(query.toLowerCase()));
-    }
-    if (activeCategory !== 'all') {
-      filtered = filtered.filter((r: Recipe) => r.category?.toLowerCase() === activeCategory.toLowerCase());
     }
     if (activeFilters.difficulty) {
       filtered = filtered.filter((r: Recipe) => r.difficulty === activeFilters.difficulty);
@@ -137,10 +178,21 @@ export default function Index() {
       filtered = filtered.filter((r: Recipe) => r.readyInMinutes <= minutes);
     }
 
+    if (activeFilters.dietary.length > 0) {
+      filtered = filtered.filter((r: Recipe) => {
+        // This assumes your recipe data has a 'dietary' array or keywords in the title/category
+        // If your mock data doesn't have a 'dietary' field yet, we can match by category:
+        return activeFilters.dietary.every(filter => 
+          r.title.toLowerCase().includes(filter.toLowerCase()) || 
+          r.category?.toLowerCase() === filter.toLowerCase()
+        );
+      });
+    }
+
     setResults(filtered);
   }, [query, activeCategory, activeFilters]);
 
-  // --- RENDER CARDS (Now with { item: Recipe } types!) ---
+
   const renderVerticalCard = ({ item }: { item: Recipe }) => {
     const matchCount = item.ingredients ? item.ingredients.filter((ing: string) => 
       pantryIngredients.some((pantryItem: string) => ing.toLowerCase().includes(pantryItem.toLowerCase()))
@@ -196,7 +248,7 @@ export default function Index() {
 
   const ListHeader = useMemo(() => {
     let suggestedRecipes: Recipe[] = [];
-    const isFiltering = activeFilters.difficulty || activeFilters.maxTime || activeFilters.cuisine;
+    const isFiltering = activeFilters.difficulty || activeFilters.maxTime || activeFilters.cuisine || activeFilters.dietary.length > 0;
 
     if (greeting === 'Good Morning') suggestedRecipes = ALL_RECIPES_DATA.filter((r: Recipe) => r.category === 'breakfast');
     else suggestedRecipes = ALL_RECIPES_DATA.filter((r: Recipe) => r.category === 'healthy');
@@ -237,31 +289,19 @@ export default function Index() {
 
         {!query && !isFiltering && (
           <>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-              {CATEGORIES.map((cat) => (
-                <TouchableOpacity 
-                  key={cat.id} 
-                  style={[styles.chip, activeCategory === cat.id && styles.chipActive]}
-                  onPress={() => setActiveCategory(cat.id)}
-                >
-                  <Text style={styles.chipEmoji}>{cat.emoji}</Text>
-                  <Text style={[styles.chipText, activeCategory === cat.id && styles.chipTextActive]}>{cat.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Suggested For You ✨</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingList}>
-              {suggestedRecipes.map(item => <React.Fragment key={item.id}>{renderTrendingCard({ item })}</React.Fragment>)}
+              {suggestedRecipes.map((item: Recipe) => <React.Fragment key={item.id}>{renderTrendingCard({ item })}</React.Fragment>)}
             </ScrollView>
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Trending Now 🔥</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingList}>
-              {ALL_RECIPES_DATA.slice(0, 3).map(item => <React.Fragment key={item.id}>{renderTrendingCard({ item })}</React.Fragment>)}
+              {ALL_RECIPES_DATA.slice(0, 3).map((item: Recipe) => <React.Fragment key={item.id}>{renderTrendingCard({ item })}</React.Fragment>)}
             </ScrollView>
           </>
         )}
@@ -280,7 +320,7 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       
       <FlatList
         data={results}
@@ -317,6 +357,17 @@ export default function Index() {
                 onSelect={(val) => setActiveFilters({...activeFilters, maxTime: val})}
               />
               
+
+              <DietarySection 
+                selected={activeFilters.dietary}
+                onToggle={(id) => {
+                  const next = activeFilters.dietary.includes(id)
+                    ? activeFilters.dietary.filter(item => item !== id)
+                    : [...activeFilters.dietary, id];
+                  setActiveFilters({...activeFilters, dietary: next});
+                }}
+              />
+
                <FilterDropdown 
                 label="Cuisine"
                 value={activeFilters.cuisine}
@@ -327,7 +378,7 @@ export default function Index() {
               <TouchableOpacity 
                 style={styles.resetBtn} 
                 onPress={() => {
-                  setActiveFilters({ difficulty: null, maxTime: null, cuisine: null });
+                  setActiveFilters({ difficulty: null, maxTime: null, cuisine: null, dietary: [] });
                   setActiveCategory('all');
                   setModalVisible(false);
                 }}
@@ -415,5 +466,28 @@ const styles = StyleSheet.create({
   dropdownValue: { fontSize: 16, color: '#FFFFFF', fontWeight: '500' },
   dropdownList: { backgroundColor: '#333', marginTop: 5, borderRadius: 12, padding: 5 },
   dropdownItem: { padding: 15, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#444' },
-  resetBtn: { marginTop: 20, backgroundColor: '#f41d1dff', padding: 16, borderRadius: 16, alignItems: 'center' }
+  resetBtn: { marginTop: 20, backgroundColor: '#f41d1dff', padding: 16, borderRadius: 16, alignItems: 'center' },
+  dietSection: { marginBottom: 25 },
+  chipContainer: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 10, 
+    marginTop: 10 
+  },
+  dietChip: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#333', 
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#444' 
+  },
+  dietChipActive: { 
+    backgroundColor: '#39afafff', 
+    borderColor: '#39afafff' 
+  },
+  dietChipText: { color: '#BBB', fontSize: 13, fontWeight: '600' },
+  dietChipTextActive: { color: '#fff' },
 });
