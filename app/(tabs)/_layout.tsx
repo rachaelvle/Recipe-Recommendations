@@ -1,3 +1,5 @@
+// Tab layout for the app with two main screens: Explore and Pantry
+// this code was written with the assistance of AI
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';

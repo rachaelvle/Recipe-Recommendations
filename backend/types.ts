@@ -9,6 +9,7 @@ export interface Recipe {
   cuisines: string[];
   dishTypes: string[];
   diets: string[];
+  difficulty?: string;
   extendedIngredients: Ingredient[];
 
   // these are optional and mainly used for display on the frontend

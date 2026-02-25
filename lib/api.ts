@@ -1,17 +1,18 @@
-/**
- * API client for the Recipe backend.
- * Set EXPO_PUBLIC_API_URL in .env (e.g. http://localhost:3001 for web, http://YOUR_COMPUTER_IP:3001 for device).
- * written with the help of AI
- */
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// We define a custom Options type to make sure TypeScript likes our 'body' object
+interface RequestOptions extends Omit<RequestInit, 'body'> {
+  body?: object;
+}
+
 async function request<T>(
   path: string,
-  options: RequestInit & { body?: object } = {}
+  options: RequestOptions = {}
 ): Promise<T> {
   const { body, ...rest } = options;
   const url = `${API_BASE}${path}`;
+  
   const res = await fetch(url, {
     ...rest,
     headers: {
@@ -20,7 +21,9 @@ async function request<T>(
     },
     ...(body && { body: JSON.stringify(body) }),
   });
+
   const data = await res.json().catch(() => ({}));
+  
   if (!res.ok) {
     throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
   }
@@ -58,12 +61,10 @@ export interface SearchBody {
 }
 
 export const api = {
-  // sanity check
   async health(): Promise<{ ok: boolean; message: string }> {
     return request("/api/health");
   },
 
-  // main search function
   async search(body: SearchBody): Promise<{ results: Recipe[] }> {
     return request("/api/search", { method: "POST", body });
   },
@@ -85,6 +86,11 @@ export const api = {
       method: "PATCH",
       body: preferences,
     });
+  },
+
+  // FIXED: Added the missing closing brace here!
+  async getRecipeDetail(id: number): Promise<Recipe> {
+    return request(`/api/recipes/${id}`);
   },
 
   async addAllergy(userId: number, allergen: string) {

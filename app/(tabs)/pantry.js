@@ -1,3 +1,5 @@
+// Pantry Screen - where users can manage their ingredients
+// this code was written with the assistance of AI
 import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, 
