@@ -15,10 +15,15 @@ import {
 import type { Recipe } from "./types.ts";
 
 // configs
-const API_KEY = "KEY";
+const API_KEY = "769b508368724a7c8195f705fca8261c";
 const RECIPES_PER_REQUEST = 100;
 const ADDITIONAL_RECIPES = 500; // How many NEW recipes to fetch
 const DELAY_BETWEEN_REQUESTS = 1200;
+
+// Tags to rotate through to maximize unique recipes from /recipes/random
+const TAGS = [
+  "gluten free", "ketogenic", "lacto-vegetarian", "ovo-vegetarian", "pescetarian", "paleo", "primal", "whole30"
+];
 
 // where to save the data
 const DB_FILE = path.join(process.cwd(), "recipes.db");
@@ -317,10 +322,11 @@ function calculateAndSaveIDFStats(db: Database.Database) {
 }
 
 // Fetch random recipes from API (bypasses the offset=1000 limit)
-async function fetchRecipes(number = RECIPES_PER_REQUEST): Promise<Recipe[]> {
+async function fetchRecipes(number = RECIPES_PER_REQUEST, tag?: string): Promise<Recipe[]> {
   // /recipes/random max is 100 per call
   const batchSize = Math.min(number, 100);
-  const url = `https://api.spoonacular.com/recipes/random?number=${batchSize}&addRecipeInformation=true&fillIngredients=true&apiKey=${API_KEY}`;
+  const tagParam = tag ? `&tags=${encodeURIComponent(tag)}` : "";
+  const url = `https://api.spoonacular.com/recipes/random?number=${batchSize}&addRecipeInformation=true&fillIngredients=true${tagParam}&apiKey=${API_KEY}`;
 
   try {
     const res = await fetch(url);
@@ -374,11 +380,14 @@ async function main() {
   const allNewRecipes: Recipe[] = []; // collect for recipes.json
   let apiCallsWithoutNewRecipes = 0;
   const MAX_ATTEMPTS_WITHOUT_NEW = 20; // Stop if we make 20 calls without finding new recipes
+  let tagIndex = 0;
 
   while (newRecipesAdded < ADDITIONAL_RECIPES) {
     const toFetch = Math.min(RECIPES_PER_REQUEST, ADDITIONAL_RECIPES - newRecipesAdded);
-    console.log(`\n🔄 Fetching ${toFetch} random recipes...`);
-    const recipes = await fetchRecipes(toFetch);
+    const currentTag = TAGS[tagIndex % TAGS.length];
+    tagIndex++;
+    console.log(`\n🔄 Fetching ${toFetch} random recipes (tag: "${currentTag}")...`);
+    const recipes = await fetchRecipes(toFetch, currentTag);
     
     if (!recipes.length) {
       console.log(`⚠️ No more recipes available from API`);
