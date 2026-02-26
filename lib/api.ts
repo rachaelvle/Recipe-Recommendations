@@ -1,13 +1,13 @@
-
-
-
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
-// We define a custom Options type to make sure TypeScript likes our 'body' object
+// Custom Options type to handle JSON body objects cleanly
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: object;
 }
 
+/**
+ * Generic request helper to handle fetch, headers, and JSON parsing
+ */
 async function request<T>(
   path: string,
   options: RequestOptions = {}
@@ -45,6 +45,8 @@ export interface Recipe {
   summary?: string;
   servings?: number;
   sourceUrl?: string;
+  score?: number;           // Added to match searcher metadata
+  scoringDetails?: string;  // Added to match searcher metadata
 }
 
 export interface Filters {
@@ -61,36 +63,6 @@ export interface SearchBody {
   userIngredients?: string[];
   userId?: number;
 }
-
-interface CustomRequestOptions extends Omit<RequestInit, 'body'> {
-  body?: any;
-}
-
-
-async function request<T>(
-  path: string,
-  options: CustomRequestOptions = {}
-): Promise<T> {
-  const { body, ...rest } = options;
-  const url = `${API_BASE}${path}`;
-  
-  const res = await fetch(url, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...rest.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
-  }
-  return data as T;
-}
-
 
 export const api = {
   async health(): Promise<{ ok: boolean; message: string }> {
