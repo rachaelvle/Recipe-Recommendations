@@ -2,8 +2,8 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from 'expo-router'; 
-import "../jsonCommands";
-import { PrintStoredUser } from "../jsonCommands";
+import "../../lib/jsonCommands";
+import { PrintStoredUser } from "../../lib/jsonCommands";
 
 export default function UserPreferences() {
   const router = useRouter(); 

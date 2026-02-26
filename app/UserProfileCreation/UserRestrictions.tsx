@@ -2,8 +2,8 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import "../jsonCommands";
-import { LoadCurrentUserID, updatedUserRestrictions } from "../jsonCommands";
+import "../../lib/jsonCommands";
+import { LoadCurrentUserID, updatedUserRestrictions } from "../../lib/jsonCommands";
 
 
 const options = ["Vegan","Gluten-Free", "Carnivore", "Lactose-Interolant", "Vegetarian", "Pescetarian", "Peanut Allergy", "Seafood Allergy"];

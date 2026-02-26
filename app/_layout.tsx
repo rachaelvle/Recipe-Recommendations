@@ -1,4 +1,4 @@
-// RecipeDetail.tsx - Screen for displaying detailed information about a selected recipe
+// Recipe Detail Screen - Displays detailed information about a selected recipe, including ingredients and summary.
 // this code was written with the assistance of AI
 import React, { useState, useEffect } from 'react';
 import { 

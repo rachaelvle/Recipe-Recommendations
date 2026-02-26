@@ -2,7 +2,7 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { loadUser } from "../jsonCommands";
+import { loadUser } from "../../lib/jsonCommands";
 // create a password checking with a simple password / email hardcoded list 
 
 export default function Login() {

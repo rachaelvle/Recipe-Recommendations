@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Recipe Recommendations",
+    "slug": "recipe-recommendations",
+    "version": "1.0.0",
+    "scheme": "recipe-app",
+    "userInterfaceStyle": "light"
+  }
+}

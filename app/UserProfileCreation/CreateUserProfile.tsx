@@ -2,7 +2,7 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { StoreCurrentUserID, StoreUserProfile } from "../jsonCommands";
+import { StoreCurrentUserID, StoreUserProfile } from "../../lib/jsonCommands";
 // TODO: add a way to store user data json file? 
 
 
