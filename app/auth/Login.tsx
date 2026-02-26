@@ -31,7 +31,7 @@ export default function Login() {
 
     // just for testing right now will make actual account checking maybe :3
     if (email == user.email && password == user.password){
-      router.push("/home/HomePage") // CHANGE LATER WHEN FINALIZING
+      router.push("/(tabs)" as any) // CHANGE LATER WHEN FINALIZING
     }
 
   }
