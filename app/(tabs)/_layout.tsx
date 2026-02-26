@@ -1,4 +1,5 @@
-import React, { Tabs } from 'expo-router';
+import React from 'react'; // React is from 'react'
+import { Tabs } from 'expo-router'; // Tabs is from 'expo-router'
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
@@ -23,7 +24,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. Pantry Screen */}
       <Tabs.Screen
         name="pantry"
         options={{

@@ -21,7 +21,7 @@ interface FilterState {
 }
 
 // 2. Load and Type your local backup data
-const RECIPE_MAP = require('../../assets/data/recipes_map.json'); 
+const RECIPE_MAP = require('../../backend/recipes.json');
 const ALL_RECIPES_DATA: APIRecipe[] = Object.values(RECIPE_MAP);
 
 const { width } = Dimensions.get('window');
