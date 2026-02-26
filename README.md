@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+To start the backend server: 
+- at the root level of the code, make sure you have a .env file
+- to the file add: 
+EXPO_PUBLIC_API_URL=http://localhost:3001
+^^ This is fine to run locally. However if you want to test the back end and front end on a different device, replace it with your IP address. 
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+cd backend
+npm install
+npm run dev
 
-## Get started
+=======================================================================================
 
-1. Install dependencies
+helpers.ts - stores the normalization functions 
 
-   ```bash
-   npm install
-   ```
+indexer.ts - reaches the API and populates the recipe database and inverted indexes
+- table definitions for recipes.db are stored here
+- to add more recipes: 
+ts-node indexer.ts
 
-2. Start the app
+migration.ts - file as indexer.ts but runs with the recipes.json (to avoid multiple API calls)
+- to add more recipes: 
+ts-node migration.ts
 
-   ```bash
-   npx expo start
-   ```
+recipes.db - stores the complete recipe database and inverted indexes
 
-In the output, you'll find options to open the app in a
+searcher.ts - stores the search engine
+- parse the seach query for implicit filters 
+- make sure allergies are not included in any recipes 
+- user can have explicit filters
+- implicit filters boost scores for relevant recipes while explicit filters completely take the recipes out 
+- time of day has a boost 
+- returns top 10 or less depending on results 
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+test.ts
+- test file (add tests you would like to run here)
+Run full test suite:    ts-node test.ts --test
+Interactive search:     ts-node test.ts "your query here"
 
-## Get a fresh project
+types.ts - type declarations
 
-When you're ready, run:
+user.ts - management and declaration for the user database
+- includes functions for editing the database as well 
 
-```bash
-npm run reset-project
-```
+server.ts - sets up the backend and endpoints
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

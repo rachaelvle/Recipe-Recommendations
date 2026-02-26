@@ -11,7 +11,7 @@ import {
   normalizeText,
   sleep
 } from "./helpers";
-import type { Recipe } from "./types.ts";
+import type { Recipe } from "./types";
 
 // configs
 const API_KEY = "API KEY";

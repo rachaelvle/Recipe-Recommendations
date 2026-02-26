@@ -1,13 +1,36 @@
-/**
- * API client for the Recipe backend.
- * Set EXPO_PUBLIC_API_URL in .env (e.g. http://localhost:3001 for web, http://YOUR_COMPUTER_IP:3001 for device).
- * written with the help of AI
- */
 
 
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// We define a custom Options type to make sure TypeScript likes our 'body' object
+interface RequestOptions extends Omit<RequestInit, 'body'> {
+  body?: object;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const { body, ...rest } = options;
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
+    ...rest,
+    headers: {
+      "Content-Type": "application/json",
+      ...rest.headers,
+    },
+    ...(body && { body: JSON.stringify(body) }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  
+  if (!res.ok) {
+    throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
+  }
+  return data as T;
+}
 
 export interface Recipe {
   id: number;

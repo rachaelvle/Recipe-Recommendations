@@ -85,6 +85,27 @@ app.post("/api/search", (req, res) => {
   }
 });
 
+// ----- Recipe Details -----
+app.get("/api/recipes/:id", (req, res) => {
+  try {
+    const recipeId = parseInt(req.params.id, 10);
+    if (isNaN(recipeId)) {
+      return res.status(400).json({ error: "Invalid recipe ID" });
+    }
+
+    const recipe = searchEngine.getRecipeById(recipeId);
+
+    if (!recipe) {
+      return res.status(404).json({ error: "Recipe not found" });
+    }
+
+    res.json(recipe);
+  } catch (err) {
+    console.error("Get recipe detail error:", err);
+    res.status(500).json({ error: "Failed to get recipe detail" });
+  }
+});
+
 // ----- Auth -----
 app.post("/api/auth/register", (req, res) => {
   try {

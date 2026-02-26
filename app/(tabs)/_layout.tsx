@@ -23,13 +23,13 @@ export default function TabLayout() {
         }}
       />
 
-
+      {/* 2. Pantry Screen */}
       <Tabs.Screen
         name="pantry"
         options={{
-          title: 'Pantry',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="nutrition" size={24} color={color} />
+          title: 'My Pantry',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="basket" size={size} color={color} />
           ),
         }}
       />

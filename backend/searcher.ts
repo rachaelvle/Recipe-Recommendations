@@ -1,7 +1,5 @@
 // search engine and methods
 // written using AI assistance 
-// filters out allergies and boosts recipes according to filters
-
 import Database from "better-sqlite3";
 import path from "path";
 import {
@@ -204,6 +202,24 @@ class EnhancedRecipeSearchEngine {
         userAllergies = profile.allergies.map(a => normalizeText(a.allergen));
         userIngredients = profile.ingredients.map(i => normalizeText(i.ingredient));
         userPreferences = profile.preferences;
+<<<<<<< HEAD
+=======
+        if (userPreferences) {
+          // Normalize preference arrays for consistent matching
+          if (userPreferences.defaultCuisines) {
+            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map((c: string) => normalizeText(c));
+          }
+          if (userPreferences.defaultDiets) {
+            userPreferences.defaultDiets = userPreferences.defaultDiets.map((d: string) => normalizeText(d));
+          }
+          if (userPreferences.defaultMealTypes) {
+            userPreferences.defaultMealTypes = userPreferences.defaultMealTypes.map((m: string) => normalizeText(m));
+          }
+          if (userPreferences.defaultDifficulties) {
+            userPreferences.defaultDifficulties = userPreferences.defaultDifficulties.map((d: string) => normalizeText(d));
+          }
+        }
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
       }
     }
 
@@ -220,14 +236,29 @@ class EnhancedRecipeSearchEngine {
     const conditions: string[] = [];
     const sqlParams: any[] = [];
 
+<<<<<<< HEAD
     // SQL Filter Construction
+=======
+    // Ingredient/Title filter for SQL 
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
     if (searchIngredients.length > 0) {
       const allWords: string[] = [];
       searchIngredients.forEach(ing => allWords.push(...normalizeText(ing).split(/\s+/).filter(Boolean)));
       if (allWords.length > 0) {
         const placeholders = allWords.map(() => '?').join(',');
+<<<<<<< HEAD
         conditions.push(`(id IN (SELECT DISTINCT recipeId FROM idx_title WHERE word IN (${placeholders})) OR id IN (SELECT DISTINCT recipeId FROM idx_ingredients WHERE word IN (${placeholders})))`);
         sqlParams.push(...allWords, ...allWords);
+=======
+        conditions.push(`(
+          id IN (SELECT DISTINCT recipeId FROM idx_title WHERE word IN (${placeholders}))
+          OR id IN (SELECT DISTINCT recipeId FROM idx_ingredients WHERE word IN (${placeholders}))
+        )`);
+        sqlParams.push(...allWords);
+        sqlParams.push(...allWords); 
+        
+        console.log(`Search filter (OR logic - title OR ingredients): [${searchIngredients.join(', ')}]`);
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
       }
     }
 
@@ -242,7 +273,13 @@ class EnhancedRecipeSearchEngine {
     }
 
     let query = `SELECT DISTINCT id FROM recipes`;
+<<<<<<< HEAD
     if (conditions.length > 0) query += ` WHERE ${conditions.join(' AND ')}`;
+=======
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
     query += ` LIMIT 500`;
 
     const rows = this.db.prepare(query).all(...sqlParams) as any[];
@@ -253,8 +290,17 @@ class EnhancedRecipeSearchEngine {
       recipes = recipes.filter(r => !this.containsAllergens(r, userAllergies));
     }
 
+<<<<<<< HEAD
     // Ranking Logic
     const totalDocs = (this.db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any).count;
+=======
+    // RELEVANCE RANKING with boosters
+    console.log("\n🎯 Applying relevance scoring...");
+    
+    const totalDocsResult = this.db.prepare(`SELECT COUNT(*) as count FROM recipes`).get() as any;
+    const totalDocs = totalDocsResult.count;
+    
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
     const filterEmpty = (arr: string[] | undefined) => (arr ?? []).filter(Boolean).map(s => s.trim()).filter(Boolean);
     
     const boostPreferences = {
@@ -266,6 +312,7 @@ class EnhancedRecipeSearchEngine {
     };
 
     const normalizedKeywords = titleSearchKeywords.map(kw => normalizeText(kw)).filter(Boolean);
+<<<<<<< HEAD
     const normalizedUserIngredients = new Set(ingredientsToUse.map(ing => normalizeText(ing)));
 
     const scoredResults: ScoredRecipe[] = recipes.map(recipe => {
@@ -276,10 +323,47 @@ class EnhancedRecipeSearchEngine {
         const idf = this.calculateTitleIDF(recipe.id, normalizedKeywords, totalDocs) * 25;
         score += idf;
         if (idf > 0) details.push(`title_idf(+${idf.toFixed(1)})`);
+=======
+    const shouldApplyTimeBonus = !explicitFilters.mealTypes?.length && !boostPreferences.mealTypes?.length;
+    
+    const normalizedUserIngredients = ingredientsToUse.length > 0
+      ? new Set(ingredientsToUse.map(ing => normalizeText(ing)))
+      : new Set<string>();
+
+    if (boostPreferences.cuisines?.length || boostPreferences.diets?.length || 
+        boostPreferences.mealTypes?.length || boostPreferences.timeBuckets?.length || 
+        boostPreferences.difficulties?.length) {
+      console.log("✨ Boosting based on:", boostPreferences);
+    }
+    
+    // NEW VARIABLE HERE: We save the scored objects to scoredResults instead of overwriting results
+    const scoredResults = results.map(recipe => {
+      let score = 0;
+      const normalizedTitle = normalizeText(recipe.title);
+      const scoringDetails: string[] = [];
+      
+      if (normalizedKeywords.length > 0) {
+        const titleIDFScore = this.calculateTitleIDF(recipe.id, normalizedKeywords, totalDocs);
+        const scaledIDF = titleIDFScore * 25;
+        
+        if (scaledIDF > 0) {
+          score += scaledIDF;
+          scoringDetails.push(`title_idf(+${scaledIDF.toFixed(1)})`);
+        }
+      }
+      
+      if (shouldApplyTimeBonus) {
+        const timeBonus = this.getTimeOfDayBonus(recipe);
+        if (timeBonus > 0) {
+          score += timeBonus;
+          scoringDetails.push(`timeOfDay(+${timeBonus})`);
+        }
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
       }
 
       if (normalizedUserIngredients.size > 0) {
         const coverage = this.calculateIngredientCoverage(recipe, normalizedUserIngredients);
+<<<<<<< HEAD
         const coverageScore = (Math.round(coverage * recipe.extendedIngredients.length) * 4) + Math.min(coverage * 10, 10);
         score += coverageScore;
         if (coverageScore > 0) details.push(`pantry(+${coverageScore.toFixed(1)})`);
@@ -296,6 +380,88 @@ class EnhancedRecipeSearchEngine {
     });
 
     scoredResults.sort((a, b) => b.score - a.score);
+=======
+        const matchCount = Math.round(coverage * recipe.extendedIngredients.length);
+        const ingredientMatchScore = matchCount * 4;
+        const coverageBonus = Math.min(coverage * 10, 10);
+        const totalIngredientScore = ingredientMatchScore + coverageBonus;
+        
+        if (totalIngredientScore > 0) {
+          score += totalIngredientScore;
+          scoringDetails.push(`ingredients:${matchCount}/${recipe.extendedIngredients.length}(+${totalIngredientScore.toFixed(1)})`);
+        }
+      }
+
+      if (boostPreferences.cuisines?.length) {
+        const cuisineMatches = recipe.cuisines.filter(c =>
+          boostPreferences.cuisines?.some(pref => pref.toLowerCase().trim() === (c ?? '').toLowerCase().trim())
+        );
+        const cuisineBoost = cuisineMatches.length * 7;
+        score += cuisineBoost;
+        scoringDetails.push(cuisineMatches.length > 0 ? `cuisine:${cuisineMatches.join(',')}(+${cuisineBoost})` : `cuisine:(+0)`);
+      }
+
+      if (boostPreferences.diets?.length) {
+        const dietMatches = recipe.diets.filter(d => 
+          boostPreferences.diets?.some(pref => pref.toLowerCase() === d.toLowerCase())
+        );
+        if (dietMatches.length > 0) {
+          const dietBoost = dietMatches.length * 25;
+          score += dietBoost;
+          scoringDetails.push(`diet:${dietMatches.join(',')}(+${dietBoost})`);
+        }
+      }
+
+      if (boostPreferences.mealTypes?.length) {
+        const mealMatches = recipe.dishTypes.filter(m => 
+          boostPreferences.mealTypes?.some(pref => pref.toLowerCase() === m.toLowerCase())
+        );
+        if (mealMatches.length > 0) {
+          const mealBoost = mealMatches.length * 10;
+          score += mealBoost;
+          scoringDetails.push(`mealType:${mealMatches.join(',')}(+${mealBoost})`);
+        }
+      }
+
+      if (boostPreferences.timeBuckets?.length) {
+        const recipeMinutes = recipe.readyInMinutes;
+
+        for (const prefBucket of boostPreferences.timeBuckets) {
+          const [prefMin, prefMax] = prefBucket.split("-").map(Number);
+
+          if (recipeMinutes <= prefMax) {
+            score += 20;
+            scoringDetails.push(`timeBucket:${prefBucket}(+25)`);
+            break; 
+          }
+        }
+      }
+
+      if (boostPreferences.difficulties?.length) {
+        // Casting recipe to any to bypass missing 'difficulty' property in type definition
+        if (boostPreferences.difficulties.includes((recipe as any).difficulty)) {
+          score += 8;
+          scoringDetails.push(`difficulty:${(recipe as any).difficulty}(+5)`);
+        }
+      }
+      
+      return { 
+        recipe, 
+        score,
+        scoringDetails: scoringDetails.join(', ')
+      };
+    }).sort((a, b) => b.score - a.score);
+
+    // FIXED: Use scoredResults for iteration and mapping
+    scoredResults.slice(0, 5).forEach((item, idx) => {
+      console.log(`${idx + 1}. ${item.recipe.title} - Score: ${item.score.toFixed(1)}`);
+      if (item.scoringDetails) {
+        console.log(`   Scoring: ${item.scoringDetails}`);
+      }
+    });
+
+    const finalResults = scoredResults.map(item => item.recipe).slice(0, 10);
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
 
     return scoredResults.map(item => ({
       ...item.recipe,
@@ -326,4 +492,22 @@ class EnhancedRecipeSearchEngine {
   }
 }
 
+<<<<<<< HEAD
+=======
+// ---------- display helpers ----------
+function displayResults(results: Recipe[], limit = 10) {
+  console.log(`\n📊 Found ${results.length} recipes\n`);
+  if (!results.length) return;
+
+  results.slice(0, limit).forEach((recipe, idx) => {
+    console.log(`${idx + 1}. ${recipe.title}`);
+    console.log(`   ⏱️  ${recipe.readyInMinutes} minutes`);
+    console.log(`   🍽️  ${recipe.cuisines.join(', ') || 'N/A'}`);
+    console.log(`   🥗 ${recipe.diets.join(', ') || 'N/A'}`);
+    console.log(`   📋 ${recipe.dishTypes.join(', ') || 'N/A'}`);
+    console.log(`   🔗 ${recipe.sourceUrl || 'N/A'}\n`);
+  });
+}
+
+>>>>>>> 9e76613a95b2bff4af41ff3e281ae31f1aff5bd6
 export { EnhancedRecipeSearchEngine };

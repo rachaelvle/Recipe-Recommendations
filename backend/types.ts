@@ -9,6 +9,7 @@ export interface Recipe {
   cuisines: string[];
   dishTypes: string[];
   diets: string[];
+  difficulty?: string;
   extendedIngredients: Ingredient[];
   difficulty: string; // e.g., 'easy', 'medium', 'hard'
 
