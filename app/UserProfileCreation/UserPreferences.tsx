@@ -2,14 +2,13 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router"; // <-- Added this so we can navigate!
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import { PrintStoredUser } from "../jsonCommands";
+import { PrintStoredUser } from "../../lib/jsonCommands";
 
 export default function UserPreferences() {
-  
   const handleGetStarted = async () => {
     await PrintStoredUser("dat@email.com");
-    
-      router.replace("/(tabs)" as any);
+
+    router.replace("/(tabs)" as any);
   };
 
   return (

@@ -10,6 +10,7 @@ export interface Recipe {
   dishTypes: string[];
   diets: string[];
   extendedIngredients: Ingredient[];
+  difficulty: string; // e.g., 'easy', 'medium', 'hard'
 
   // these are optional and mainly used for display on the frontend
   image?: string;
@@ -17,6 +18,8 @@ export interface Recipe {
   summary?: string;
   servings?: number;
   sourceUrl?: string;
+  scoringDetails?: string; 
+  score?: number;
 }
 
 // ingredient structure to store information about each ingredient in a recipe

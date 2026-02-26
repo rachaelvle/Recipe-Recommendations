@@ -1,9 +1,9 @@
 // Test Script for Recipe Search
 // Run different search scenarios to test the system (written with AI for tests)
 
-import { EnhancedRecipeSearchEngine } from "./searcher.ts";
+import { EnhancedRecipeSearchEngine } from "./searcher";
 import type { Recipe } from "./types.ts";
-import { UserDatabaseManager } from "./user.ts";
+import { UserDatabaseManager } from "./user";
 
 // ============================================
 // DISPLAY HELPER

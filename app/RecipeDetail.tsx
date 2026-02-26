@@ -1,5 +1,5 @@
 // RecipeDetail.tsx - Screen for displaying detailed information about a selected recipe
-// this code was written with the assistance of AI
+//This code was written with the assistance of AI
 import React, { useState, useEffect } from 'react';
 import {
  StyleSheet, Text, View, Image, ScrollView, TouchableOpacity,
@@ -10,50 +10,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, Recipe as APIRecipe } from '../lib/api';
 
-
 const { width } = Dimensions.get('window');
-
 
 export default function RecipeDetail() {
  const { id } = useLocalSearchParams();
  const router = useRouter();
-  const [recipe, setRecipe] = useState<APIRecipe | null>(null);
+ const [recipe, setRecipe] = useState<APIRecipe | null>(null);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
-  // State to track which ingredients the user has crossed off (using name instead of ID)
  const [crossedIngredients, setCrossedIngredients] = useState<string[]>([]);
 
-
- // Hardcoded for project demo purposes!
  const currentUserId = 1;
 
-
-useEffect(() => {
+ useEffect(() => {
    const fetchDetailAndPantry = async () => {
      try {
        setLoading(true);
       
-       // Fetch both the recipe AND the user's profile at the same time
        const [recipeData, userProfile] = await Promise.all([
-         api.getRecipeDetail(Number(id)),
-         api.getUserProfile ? api.getUserProfile(currentUserId).catch(() => null) : Promise.resolve(null)
+         (api as any).getRecipeDetail(Number(id)),
+         (api as any).getUserProfile ? (api as any).getUserProfile(currentUserId).catch(() => null) : Promise.resolve(null)
        ]);
       
        setRecipe(recipeData);
 
-
-       console.log("USER PROFILE FETCHED:", userProfile);
-
-
-       // Auto-cross off ingredients based on user's pantry
        if (userProfile && (userProfile as any).ingredients) {
          const pantryNames = (userProfile as any).ingredients.map((i: any) =>
            i.ingredient.toLowerCase().trim()
          );
         
-         console.log("PANTRY NAMES:", pantryNames);
-
-
          const alreadyOwnedNames = recipeData.extendedIngredients
            .filter((ing: any) => {
              if (!ing.name) return false;
@@ -64,43 +49,30 @@ useEffect(() => {
            })
            .map((ing: any) => ing.name);
 
-
-         console.log("MATCHED INGREDIENTS:", alreadyOwnedNames);
          setCrossedIngredients(alreadyOwnedNames);
        }
 
-
-     // vvv THESE WERE THE MISSING LINES vvv
      } catch (err) {
        console.error("Fetch Error:", err);
        setError("Could not load recipe details.");
      } finally {
        setLoading(false);
      }
-     // ^^^ ----------------------------- ^^^
-
-
    };
-
 
    if (id) fetchDetailAndPantry();
  }, [id]);
 
-
- // Clean HTML tags from the backend summary string
  const cleanSummary = recipe?.summary?.replace(/<[^>]*>?/gm, '') || "";
 
-
- // Function to toggle an ingredient's crossed-off state manually
  const toggleIngredient = (ingredientName: string) => {
    if (!ingredientName) return;
    setCrossedIngredients(prev =>
      prev.includes(ingredientName)
-       ? prev.filter(name => name !== ingredientName) // Un-cross
-       : [...prev, ingredientName]                    // Cross off
+       ? prev.filter(name => name !== ingredientName) 
+       : [...prev, ingredientName]                    
    );
  };
-
 
  if (loading) {
    return (
@@ -110,7 +82,6 @@ useEffect(() => {
      </View>
    );
  }
-
 
  if (error || !recipe) {
    return (
@@ -123,12 +94,10 @@ useEffect(() => {
    );
  }
 
-
  return (
    <View style={styles.container}>
      <StatusBar barStyle="light-content" />
      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-       {/* Header Image */}
        <View style={styles.imageContainer}>
          <Image source={{ uri: recipe.image }} style={styles.mainImage} />
          <TouchableOpacity style={styles.floatingBack} onPress={() => router.back()}>
@@ -136,8 +105,6 @@ useEffect(() => {
          </TouchableOpacity>
        </View>
 
-
-       {/* Content Section */}
        <View style={styles.contentCard}>
          <Text style={styles.title}>{recipe.title}</Text>
         
@@ -152,34 +119,27 @@ useEffect(() => {
            </View>
          </View>
 
-
-         {/* Diets / Chips */}
          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dietScroll}>
-           {recipe.diets?.map((diet, index) => (
+           {/* Added :string and :number below */}
+           {recipe.diets?.map((diet: string, index: number) => (
              <View key={index} style={styles.dietBadge}>
                <Text style={styles.dietText}>{diet.toUpperCase()}</Text>
              </View>
            ))}
          </ScrollView>
 
-
          <View style={styles.divider} />
 
-
-         {/* Summary */}
          <Text style={styles.sectionTitle}>Summary</Text>
          <Text style={styles.summaryText}>{cleanSummary}</Text>
 
-
-         {/* Ingredients */}
          <Text style={styles.sectionTitle}>Ingredients</Text>
-         {recipe.extendedIngredients?.map((ing, index) => {
-           // Check if the ingredient NAME is in our crossed-off list
+         {/* Added :any and :number below */}
+         {recipe.extendedIngredients?.map((ing: any, index: number) => {
            const isCrossed = crossedIngredients.includes(ing.name);
           
            return (
              <TouchableOpacity
-               // Fallback to index if the ID is ever missing
                key={ing.id || index}
                style={[styles.ingredientRow, isCrossed && styles.ingredientRowCrossed]}
                onPress={() => toggleIngredient(ing.name)}
@@ -198,14 +158,12 @@ useEffect(() => {
            );
          })}
 
-
          <View style={{ height: 40 }} />
        </View>
      </ScrollView>
    </View>
  );
 }
-
 
 const styles = StyleSheet.create({
  container: { flex: 1, backgroundColor: '#25292e' },
@@ -267,4 +225,3 @@ const styles = StyleSheet.create({
  },
  backBtn: { backgroundColor: '#39afafff', padding: 15, borderRadius: 12 }
 });
-

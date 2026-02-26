@@ -28,6 +28,29 @@ function initServices() {
   }
 }
 
+app.get('/api/recipes/:id', (req, res) => {
+  const recipeId = parseInt(req.params.id);
+  const recipe = searchEngine.getRecipeById(recipeId);
+
+  if (recipe) {
+    res.json(recipe);
+  } else {
+    res.status(404).json({ error: "Recipe not found" });
+  }
+});
+
+// This fixes the 404 for /api/users/:id
+app.get('/api/users/:id', (req, res) => {
+  const userId = parseInt(req.params.id);
+  const profile = userDb.getUserProfile(userId);
+
+  if (profile) {
+    res.json(profile);
+  } else {
+    res.status(404).json({ error: "User profile not found" });
+  }
+});
+
 // ----- Health -----
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, message: "Recipe API is running" });
@@ -189,6 +212,9 @@ app.post("/api/users/:id/ingredients", (req, res) => {
     res.status(500).json({ error: "Failed to add ingredient" });
   }
 });
+
+
+
 
 app.delete("/api/users/:id/ingredients", (req, res) => {
   try {

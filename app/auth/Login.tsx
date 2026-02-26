@@ -2,27 +2,24 @@ import { styles } from "@/styles/SimpleStyleSheet";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { loadUser } from "../jsonCommands";
-// create a password checking with a simple password / email hardcoded list 
+import { loadUser } from "../../lib/jsonCommands";
+// create a password checking with a simple password / email hardcoded list
 
 export default function Login() {
-
-  // store user input to be later checked for login 
+  // store user input to be later checked for login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-
-  const handleSubmit = async () => { // takes user input and handles email and password 
-    if (!email || !password) 
-    {
+  const handleSubmit = async () => {
+    // takes user input and handles email and password
+    if (!email || !password) {
       setError("Please enter email and password");
       return;
-    } // no input 
+    } // no input
 
     const user = await loadUser(email); // pass in the provided email
-    if (!user || user.password != password) 
-    {
+    if (!user || user.password != password) {
       setError("Invalid Credentials");
       return;
     }
@@ -30,13 +27,12 @@ export default function Login() {
     setError(""); // clear error
 
     // just for testing right now will make actual account checking maybe :3
-    if (email == user.email && password == user.password){
-      router.push("/(tabs)" as any) // CHANGE LATER WHEN FINALIZING
+    if (email == user.email && password == user.password) {
+      router.push("/(tabs)" as any); // CHANGE LATER WHEN FINALIZING
     }
+  };
 
-  }
-
-    return (
+  return (
     <View style={styles.container}>
       <Text style={styles.HeaderText}>Login</Text>
 
@@ -46,7 +42,7 @@ export default function Login() {
         style={styles.input}
         value={email}
         autoCapitalize="none"
-        onChangeText={setEmail} // sets email when user sets email 
+        onChangeText={setEmail} // sets email when user sets email
         keyboardType="email-address"
       />
 
@@ -56,11 +52,11 @@ export default function Login() {
         style={styles.input}
         value={password}
         onChangeText={setPassword} // sets password when user inputs in text box
-        secureTextEntry // password dots 
+        secureTextEntry // password dots
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null} 
-      
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <Pressable style={styles.YesButton} onPress={handleSubmit}>
         <Text style={styles.Text}>Sign In</Text>
       </Pressable>
@@ -70,4 +66,3 @@ export default function Login() {
 function setError(arg0: string) {
   throw new Error("Function not implemented.");
 }
-

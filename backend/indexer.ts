@@ -10,7 +10,7 @@ import {
   normalizeDiet,
   normalizeText,
   sleep
-} from "./helpers.ts";
+} from "./helpers";
 import type { Recipe } from "./types.ts";
 
 // configs

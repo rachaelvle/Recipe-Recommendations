@@ -4,28 +4,10 @@
  * written with the help of AI
  */
 
+
+
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
-async function request<T>(
-  path: string,
-  options: RequestInit & { body?: object } = {}
-): Promise<T> {
-  const { body, ...rest } = options;
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...rest.headers,
-    },
-    ...(body && { body: JSON.stringify(body) }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
-  }
-  return data as T;
-}
 
 export interface Recipe {
   id: number;
@@ -57,13 +39,41 @@ export interface SearchBody {
   userId?: number;
 }
 
+interface CustomRequestOptions extends Omit<RequestInit, 'body'> {
+  body?: any;
+}
+
+
+async function request<T>(
+  path: string,
+  options: CustomRequestOptions = {}
+): Promise<T> {
+  const { body, ...rest } = options;
+  const url = `${API_BASE}${path}`;
+  
+  const res = await fetch(url, {
+    ...rest,
+    headers: {
+      "Content-Type": "application/json",
+      ...rest.headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  
+  if (!res.ok) {
+    throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`);
+  }
+  return data as T;
+}
+
+
 export const api = {
-  // sanity check
   async health(): Promise<{ ok: boolean; message: string }> {
     return request("/api/health");
   },
 
-  // main search function
   async search(body: SearchBody): Promise<{ results: Recipe[] }> {
     return request("/api/search", { method: "POST", body });
   },
@@ -85,6 +95,10 @@ export const api = {
       method: "PATCH",
       body: preferences,
     });
+  },
+
+  async getRecipeDetail(id: string | number): Promise<Recipe> {
+    return request(`/api/recipes/${id}`);
   },
 
   async addAllergy(userId: number, allergen: string) {

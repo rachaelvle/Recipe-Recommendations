@@ -1,6 +1,18 @@
-import { Stack } from "expo-router";
-import React from "react";
+import React from 'react';
+import { Stack } from 'expo-router';
+import { PantryProvider } from '../src/context/PantryContext'; 
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'Blocked aria-hidden on an element',
+  'props.pointerEvents is deprecated',
+]);
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />; // we dont want to show screen yet until user gets onto the app itself
+  return (
+    <PantryProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+      </Stack>
+    </PantryProvider>
+  );
 }
