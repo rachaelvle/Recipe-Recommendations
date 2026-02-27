@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
 
   container: {
-    backgroundColor:"##f4f4f4",
+    backgroundColor:"#f4f4f4",
     flex: 1,
     gap:10,
     justifyContent: "center",
@@ -125,7 +125,111 @@ export const styles = StyleSheet.create({
   },
 
 
-  // UserProfile Layout 
+  // User Preferces 
+    Prefcontainer: {
+    flex: 1,
+    backgroundColor: "#f4f4f4",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 30,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 20,
+    color: "#111",
+  },
+
+  // Input row
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    gap: 10,
+  },
+  Headerinput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 2,
+    borderColor: "#ff5e65",
+    borderRadius: 4,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: "#111",
+    backgroundColor: "#fff",
+  },
+  addButton: {
+    height: 48,
+    paddingHorizontal: 20,
+    backgroundColor: "#ff5e65",
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addButtonPressed: {
+    backgroundColor: "#FA2533",
+  },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+
+  
+  chipList: {
+    gap: 10,
+    paddingBottom: 16,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ff5e65",
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    gap: 14,
+    borderWidth: 2,
+    borderColor: "#FA2533",
+  },
+  chipPressed: {
+    backgroundColor: "#FA2533",
+  },
+  chipX: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  chipText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    textTransform: "lowercase",
+  },
+  emptyHint: {
+    color: "#aaa",
+    fontSize: 15,
+    marginTop: 8,
+  },
+
+  // Save button
+  saveButton: {
+    marginTop: 16,
+    height: 52,
+    backgroundColor: "#ff5e65",
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  saveButtonPressed: {
+    backgroundColor: "#FA2533",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+
   
   
 

@@ -28,7 +28,7 @@ export default function Login() {
       StoreCurrentUserID(loginResponse.user.id) // STORE USER ID TO PASS ONTO NEXT PAGE ON THE STACK
 
       // *************************************** USING FOR TESTING RIGHT NOW CHANGE TO SOMETHING ELSE LATER **************************************************
-      router.push('/') // go to home or something
+      router.push('/UserProfileCreation/ShowUserProfile') // go to home or something 
 
     } catch (error) {
       console.error('Login Failed', error); // debugging 

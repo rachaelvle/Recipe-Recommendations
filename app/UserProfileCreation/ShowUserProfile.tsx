@@ -11,7 +11,8 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<null | {
   username: string;
   allergies: string[];
-  preferences: string[];
+  prefDiets: string[];
+  prefCuisines: string[]
   }>(null);
 
   useEffect(() => { const initUser = async () => { // make API calls in useEffect
@@ -19,7 +20,8 @@ export default function ProfileScreen() {
     // FGet user data and pass to UI
     const currUserID = await LoadCurrentUserID();
     let allergyList = [];
-    let prefList = [];
+    let diet = [];
+    let cuisine = []
     let USER;
     if (currUserID)
     {
@@ -28,17 +30,18 @@ export default function ProfileScreen() {
         allergyList.push(promise.allergen); // add allergen to list
       }
 
-      // WILL BE IMPLIMENTATED LATER TIME 
+      // WILL BE IMPLIMENTATED LATER TIME get user pref and display
+      // cuisine = [...USER.preferences.defaultCuisines]
+      // diet = [...USER.preferences.defaultDiets]
 
-      // for (const promise of USER.defaultCuisines){
-      //   prefList.push(promise.allergen); // add pref to list
-      // }
+
     }
 
     const builtUser = {
       username: USER.user.username,
       allergies: allergyList,
-      preferences: ["Italian", "Spicy"], // will impliment prefernce list later on
+      prefDiets: USER.preferences.defaultCuisines, // will impliment prefernce list later on
+      prefCuisines: USER.preferences.defaultDiets
     };
 
       setUser(builtUser); // set user as the one we just made
@@ -70,12 +73,15 @@ export default function ProfileScreen() {
       <InfoRow
         label="Allergies"
         value={user.allergies.join(", ")}
-        onChange={() =>router.push("/UserProfileCreation/GetUserAllergies") }/>
+        onChange={() => router.push({ pathname: "/UserProfileCreation/GetUserAllergies", params: { isEditing: "true" }} )}/>
       <Divider />
       <InfoRow
-        label="Preferences"
-        value={user.preferences.join(", ")}
-        onChange={() => router.push("/UserProfileCreation/GetUserAllergies")}/>
+        label="Perferred Diets"
+        value={user.prefDiets.join(", ")}
+        onChange={() => router.push("/UserProfileCreation/GetUserPreference")}/>
+        <InfoRow
+        label="Perferred Cuisines"
+        value={user.prefCuisines.join(", ")}/>
     </View>
 
     <Pressable
@@ -96,10 +102,8 @@ function InfoRow({
 }: {
   label: string;
   value: string;
-  onChange: () => void;
-}) 
-
-
+  onChange?: () => void;
+})  
 {
   return (
     <View style={styles.row}>
@@ -107,10 +111,13 @@ function InfoRow({
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.value}> {value.length > 0 ? value : "None selected"} </Text>
       </View>
-
-      <Pressable style={({ pressed }) => [ styles.changeBtn,pressed && { opacity: 0.85 },]} onPress={onChange}>
-        <Text style={styles.changeText}>Change</Text>
-      </Pressable>
+      {onChange && (
+        <Pressable
+          style={({ pressed }) => [styles.changeBtn, pressed && { opacity: 0.85 }]}
+          onPress={onChange}>
+          <Text style={styles.changeText}>Change</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

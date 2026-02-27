@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 import { styles } from "@/styles/SimpleStyleSheet";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { LoadCurrentUserID } from "../../Utils/jsonCommands";
@@ -8,6 +8,11 @@ import { LoadCurrentUserID } from "../../Utils/jsonCommands";
 const options = ["Shell Fish", "Peanuts", "Almonds", "Gluten", "Lactose Intolerant", "Fish", "Soy", "Eggs", "Sesame"];
 
 export default function GetUserAllergies() {
+
+    const { isEditing } = useLocalSearchParams();
+
+    const editingMode = isEditing === "true"; // convert string → boolean
+
     const [selected, setSelected] = useState<Set<number>>(new Set()); // set of 
 
     const UpdateUserRestrictions = async () => {
@@ -39,7 +44,15 @@ export default function GetUserAllergies() {
             // console.log(UserProfile.allergies)
         }
         
-        router.push('/UserProfileCreation/ShowUserProfile')
+        if (editingMode)
+        {
+            router.push('/UserProfileCreation/ShowUserProfile')
+        }
+        else 
+        {
+            router.push("/UserProfileCreation/GetUserPreference")
+        }
+        
 
     };
 
