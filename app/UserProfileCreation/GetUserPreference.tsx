@@ -1,23 +1,65 @@
 import { api } from "@/lib/api";
 import { styles } from "@/styles/SimpleStyleSheet";
 import { LoadCurrentUserID } from "@/Utils/jsonCommands";
-import { router } from "expo-router";
-import React, { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View
-} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-
-const SimpleDietList = new Set<string>(["vegan", "vegetrian", "gluten free", "dairy free", "paleolithic", "primal",])
-const SimpleCuisineList = new Set<string>(["chinese", "asian", "mediterranean", "italian", "european", "mexican", "greek",])
+const SimpleDietList = new Set<string>([
+  "vegan",
+  "vegetarian",
+  "gluten free",
+  "dairy free",
+  "paleolithic",
+  "primal",
+]);
+const SimpleCuisineList = new Set<string>([
+  "chinese",
+  "asian",
+  "mediterranean",
+  "italian",
+  "european",
+  "mexican",
+  "greek",
+]);
 
 export default function GetUserPreference() {
+  const { isEditing } = useLocalSearchParams();
+
+  const editingMode = isEditing === "true"; // convert string → boolean
+
+  const [user, setUser] = useState<number | null>(0);
+
   const [chips, setChips] = useState<string[]>([]);
   const [text, setText] = useState("");
+
+  useEffect(() => {
+    const updateUI = async () => {
+      const currUserID = await LoadCurrentUserID();
+
+      setUser(currUserID);
+
+      if (!isEditing) {
+        return;
+      } // not editing i.e. first time loading
+
+      if (currUserID) {
+        let USER = await api.getUserProfile(currUserID); // get the user data
+
+        let prefs = [
+          ...USER.preferences.defaultDiets,
+          ...USER.preferences.defaultCuisines,
+        ];
+        setChips(prefs);
+      }
+    };
+
+    updateUI();
+  }, []);
+
+  if (!user) {
+    return <Text>Loading profile...</Text>;
+  }
 
   const addChip = (raw: string) => {
     const input = raw.trim();
@@ -35,17 +77,13 @@ export default function GetUserPreference() {
     let Diets: string[] = [];
     let Cuisines: string[] = [];
 
-    // since we are demoing we only need the simple inputs, I will include some simple ones for profile 
+    // since we are demoing we only need the simple inputs, I will include some simple ones for profile
     for (const item of chips) {
-      let pref = item.toLowerCase();
-
-      if (SimpleCuisineList.has(pref))
-      {
-        Cuisines.push(item)
-      }
-      else
-      {
-        Diets.push(item)
+      let pref = item.toLowerCase().trim();
+      if (SimpleDietList.has(pref)) {
+        Diets.push(item);
+      } else {
+        Cuisines.push(item);
       }
     }
 
@@ -57,11 +95,10 @@ export default function GetUserPreference() {
     if (currUserID === null) return;
     let sortedPreferences = sortInputs();
     const payload = {
-
-      defaultCuisines: Array.from(sortedPreferences[1]),
-      defaultDiets: Array.from(sortedPreferences[0]),
+      defaultCuisines: Array.from(sortedPreferences[0]),
+      defaultDiets: Array.from(sortedPreferences[1]),
     };
-    
+
     await api.updatePreferences(currUserID, payload);
     router.replace("/UserProfileCreation/ShowUserProfile");
   };
@@ -75,7 +112,7 @@ export default function GetUserPreference() {
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder="Add Preference"
+          placeholder="E.g. Mexican"
           placeholderTextColor="#999"
           style={styles.Headerinput}
           returnKeyType="done"
@@ -83,7 +120,10 @@ export default function GetUserPreference() {
         />
         <Pressable
           onPress={() => addChip(text)}
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+          style={({ pressed }) => [
+            styles.addButton,
+            pressed && styles.addButtonPressed,
+          ]}
         >
           <Text style={styles.addButtonText}>Add</Text>
         </Pressable>
@@ -102,7 +142,11 @@ export default function GetUserPreference() {
             <Pressable
               key={c}
               onPress={() => removeChip(c)}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}>
+              style={({ pressed }) => [
+                styles.chip,
+                pressed && styles.chipPressed,
+              ]}
+            >
               <Text style={styles.chipX}>✕</Text>
               <Text style={styles.chipText}>{c}</Text>
             </Pressable>
@@ -114,7 +158,10 @@ export default function GetUserPreference() {
       {chips.length > 0 && (
         <Pressable
           onPress={UpdateuserPrefernce}
-          style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
+          style={({ pressed }) => [
+            styles.saveButton,
+            pressed && styles.saveButtonPressed,
+          ]}
         >
           <Text style={styles.saveButtonText}>Save Preferences</Text>
         </Pressable>
