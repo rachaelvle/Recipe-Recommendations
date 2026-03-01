@@ -15,28 +15,36 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     const initUser = async () => {
-      // make API calls in useEffect
-
-      // FGet user data and pass to UI
       const currUserID = await LoadCurrentUserID();
-      let allergyList = [];
-
-      let USER;
-      if (currUserID) {
-        USER = await api.getUserProfile(currUserID);
-        for (const promise of USER.allergies) {
-          allergyList.push(promise.allergen); // add allergen to list
-        }
+      if (!currUserID) {
+        // no logged in user; send back to login screen
+        router.replace('/auth/Login');
+        return;
       }
 
-      const builtUser = {
-        username: USER.user.username,
-        allergies: allergyList,
-        prefDiets: USER.preferences.defaultCuisines, // will impliment prefernce list later on
-        prefCuisines: USER.preferences.defaultDiets,
-      };
+      try {
+        const USER = await api.getUserProfile(currUserID);
+        if (!USER) {
+          throw new Error('Profile missing');
+        }
 
-      setUser(builtUser); // set user as the one we just made
+        const allergyList: string[] = [];
+        for (const a of USER.allergies) {
+          allergyList.push(a.allergen);
+        }
+
+        const builtUser = {
+          username: USER.user.username,
+          allergies: allergyList,
+          prefDiets: USER.preferences?.defaultDiets ?? [],
+          prefCuisines: USER.preferences?.defaultCuisines ?? [],
+        };
+
+        setUser(builtUser);
+      } catch (err) {
+        console.error('Failed to load profile', err);
+        // maybe redirect to login or show error
+      }
     };
 
     initUser();
@@ -74,7 +82,7 @@ export default function ProfileScreen() {
         <Divider />
         <InfoRow
           label="Perferred Diets"
-          value={user.prefDiets.join(", ")}
+          value={(user.prefDiets || []).join(", ")}
           onChange={() =>
             router.push({
               pathname: "/UserProfileCreation/GetUserPreference",
@@ -84,7 +92,7 @@ export default function ProfileScreen() {
         />
         <InfoRow
           label="Perferred Cuisines"
-          value={user.prefCuisines.join(", ")}
+          value={(user.prefCuisines || []).join(", ")}
         />
       </View>
 
@@ -93,7 +101,7 @@ export default function ProfileScreen() {
           styles.startButton,
           pressed && { opacity: 0.9 },
         ]}
-        onPress={() => router.push("/")}
+        onPress={() => router.replace("/(tabs)/index")}
       >
         <Text style={styles.startText}>Lets start cooking!</Text>
       </Pressable>
