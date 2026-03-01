@@ -71,10 +71,10 @@ export default function ProfileScreen() {
 
         <InfoRow
           label="Allergies"
-          value={user.allergies.join(", ")}
+          value={user.allergies.join(", ")} 
           onChange={() =>
             router.push({
-              pathname: "/UserProfileCreation/GetUserAllergies",
+              pathname: "/UserProfileCreation/GetUserAllergies",   
               params: { isEditing: "true" },
             })
           }
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
   page: {
     flex: 1, // FULL screen height (important)
     padding: 20,
-    backgroundColor: "#f4f6fb",
+    backgroundColor: "#333333",
     justifyContent: "center", // Vertical center (all screen sizes)
   },
   card: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#444444",
     borderRadius: 18,
     padding: 18,
-    shadowColor: "#000",
+    shadowColor: "#f4f4f4",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     marginBottom: 12,
-    color: "#1f2430",
+    color: "#f4f4f4",
   },
   row: {
     flexDirection: "row",
@@ -176,34 +176,35 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: "#7b8496",
+    color: "#ffffff",
     marginBottom: 3,
     textTransform: "capitalize",
   },
   value: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#000",
+    color: "#f4f4f4",
   },
   changeBtn: {
     borderWidth: 2,
-    borderColor: "#ff5e65",
+    borderColor: "#39afaf",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: "#fff",
+    backgroundColor: "#333333",
   },
   changeText: {
     fontWeight: "700",
     fontSize: 14,
+    color: "#f4f4f4"
   },
   divider: {
     height: 1,
-    backgroundColor: "#e6e9f0",
+    backgroundColor: "#39afaf",
   },
   startButton: {
     marginTop: 20,
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",

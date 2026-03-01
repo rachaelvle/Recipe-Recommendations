@@ -1,48 +1,42 @@
 import { api } from "@/lib/api";
 import { styles } from "@/styles/SimpleStyleSheet";
+import { LoadCurrentUserID } from "@/Utils/jsonCommands";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { LoadCurrentUserID } from "../../Utils/jsonCommands";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-const options = [
-  "Shell Fish",
-  "Peanuts",
-  "Almonds",
-  "Gluten",
-  "Lactose Intolerant",
-  "Fish",
-  "Soy",
-  "Eggs",
-  "Sesame",
-];
 
-export default function GetUserAllergies() {
+
+export default function GetUserPreference() {
   const { isEditing } = useLocalSearchParams();
 
   const editingMode = isEditing === "true"; // convert string → boolean
 
   const [user, setUser] = useState<number | null>(0);
-  const [selected, setSelected] = useState<Set<number>>(new Set()); // set of
+
+  const [chips, setChips] = useState<string[]>([]);
+  const [text, setText] = useState("");
 
   useEffect(() => {
     const updateUI = async () => {
       const currUserID = await LoadCurrentUserID();
 
       setUser(currUserID);
-      let allergyList = [];
+
+      if (!isEditing) {
+        return;
+      } // not editing i.e. first time loading
+      let allergens: string[] = []
       if (currUserID) {
+        
         let USER = await api.getUserProfile(currUserID); // get the user data
-        USER = await api.getUserProfile(currUserID);
         for (const promise of USER.allergies) {
-          const index = options.findIndex(
-            (o) => o.toLowerCase() === promise.allergen.toLowerCase(),
-          );
-          if (index !== -1) allergyList.push(index);
-        }
+          allergens.push(promise.allergen)
+         }
+        setChips(allergens);
       }
-      setSelected(new Set(allergyList));
     };
+
     updateUI();
   }, []);
 
@@ -50,11 +44,21 @@ export default function GetUserAllergies() {
     return <Text>Loading profile...</Text>;
   }
 
-  const UpdateUserRestrictions = async () => {
-    // make the list of strictions and then adds to the user database
-    let test;
-    const choices = Array.from(selected).map((i) => options[i]);
+  const addChip = (raw: string) => {
+    const input = raw.trim();
+    if (!input) return;
+    if (chips.includes(input.toLowerCase())) return;
+    setChips((prev) => [...prev, input.toLowerCase()]);
+    setText("");
+  };
 
+  const removeChip = (chip: string) => {
+    setChips((prev) => prev.filter((c) => c !== chip));
+  };
+
+
+  const UpdateUserRestrictions = async () => {
+    // get list of user pref and store 
     const currUserID: number | null = await LoadCurrentUserID();
 
     if (currUserID === null) return;
@@ -67,75 +71,83 @@ export default function GetUserAllergies() {
       await api.removeAllergy(currUserID, food.allergen); // empty the list
     }
     // add the allergies that were
-    if (choices.length != 0) {
-      for (const food of choices) {
-        test = await api.addAllergy(currUserID, food);
+    if (chips.length != 0) {
+      for (const food of chips) {
+        let test = await api.addAllergy(currUserID, food);
       }
-      // console.log(test.allergies);
-    } else {
-      UserProfile = await api.getUserProfile(currUserID);
-      // console.log(UserProfile.allergies)
-    }
 
+    
+    }
     if (editingMode) {
       router.push("/UserProfileCreation/ShowUserProfile");
     } else {
       router.push("/UserProfileCreation/GetUserPreference");
     }
-  };
-
-  const toggle = (id: number) => {
-    // function called toggle, takes an integer and updates the box that is tied to that integer
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  ;}
 
   return (
-    // design if pressed button
-    <View style={styles.preferenceContainer}>
-      <Text style={styles.BannerText}> What are you unable to eat?</Text>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {options.map((label, i) => {
-          const on = selected.has(i);
+    <View style={styles.Prefcontainer}>
+      <Text style={styles.title}>What foods are you allergic to?</Text>
 
-          return (
-            // dynamic button, checks state and add/remove style based on current state
-            <Pressable
-              key={i}
-              onPress={() => toggle(i)}
-              style={({ pressed }) => [
-                styles.ToggleButton,
-                on && styles.selected,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.buttonText, on && styles.selectedText]}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      <View style={styles.footer}>
+      {/* Input bar */}
+      <View style={styles.inputRow}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="E.g. Shrimp"
+          placeholderTextColor="#ffffff"
+          style={styles.Headerinput}
+          returnKeyType="done"
+          onSubmitEditing={() => addChip(text)}
+        />
         <Pressable
+          onPress={() => addChip(text)}
           style={({ pressed }) => [
-            styles.YesButton,
-            pressed && { opacity: 0.85 },
-          ]} //   "User chose:", choices
-          onPress={async () => {
-            UpdateUserRestrictions();
-          }}
+            styles.addButton,
+            pressed && styles.addButtonPressed,
+          ]}
         >
-          <Text style={styles.Text}>CONTINUE</Text>
+          <Text style={styles.addButtonText}>Add</Text>
         </Pressable>
       </View>
+
+      {/* Chips list */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.chipList}
+        showsVerticalScrollIndicator={false}
+      >
+        {chips.length === 0 ? (
+          <Text style={styles.emptyHint}>No allergens added yet.</Text>
+        ) : (
+          chips.map((c) => (
+            <Pressable
+              key={c}
+              onPress={() => removeChip(c)}
+              style={({ pressed }) => [
+                styles.chip,
+                pressed && styles.chipPressed,
+              ]}
+            >
+              <Text style={styles.chipX}>✕</Text>
+              <Text style={styles.chipText}>{c}</Text>
+            </Pressable>
+          ))
+        )}
+      </ScrollView>
+
+      {/* Save button */}
+      {(
+        <Pressable
+          onPress={UpdateUserRestrictions}
+          style={({ pressed }) => [
+            styles.saveButton,
+            pressed && styles.saveButtonPressed,
+          ]}
+        >
+          <Text style={styles.saveButtonText}>Save Preferences</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

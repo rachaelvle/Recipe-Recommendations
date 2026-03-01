@@ -1,10 +1,16 @@
 import { StyleSheet } from "react-native";
 
+// COLOR PALLETE 
+// #39afaf b
+// #333333 
+// #4b4b4b
+// text "#f4f4f4
+
 // style to repeatedly store design choices 
 export const styles = StyleSheet.create({
 
   container: {
-    backgroundColor:"#f4f4f4",
+    backgroundColor:"#333333",
     flex: 1,
     gap:10,
     justifyContent: "center",
@@ -12,7 +18,7 @@ export const styles = StyleSheet.create({
   },
   HeaderText: {
     fontWeight: "800",
-    color: "#white",
+    color: "#f4f4f4",
     fontSize: 25,
     textAlign: "center",
     padding: 24, 
@@ -29,7 +35,7 @@ export const styles = StyleSheet.create({
   },
 
   StartButton: {
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 10,
@@ -45,7 +51,7 @@ export const styles = StyleSheet.create({
    YesButton: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 10,
@@ -53,28 +59,28 @@ export const styles = StyleSheet.create({
   input: {
     width: "80%",
     backgroundColor: 'transparent',
-    color: "black",
+    color: "#f4f4f4",
     padding: 14,
     borderRadius: 10,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: "#ff5e65",
+    borderColor: "#39afaf",
   },
   error: {
-    color: "#ff6b6b",
+    color: "#ffffff",
     marginBottom: 10,
     textAlign: "center",
   },
 
   // User Allegies Style Section 
-  preferenceContainer: { flex: 1, backgroundColor: "#f4f4f4" },
+  preferenceContainer: { flex: 1, backgroundColor: "#333333" },
 
   scroll: { flex: 1 }, // takes up all space 
   scrollContent: { padding: 30, gap: 25, paddingTop: 50,}, 
 
   selected: {
-    backgroundColor: "#ff5e65",
-    borderColor: "#FA2533",
+    backgroundColor: "#39afaf",
+    borderColor: "#258585",
     borderWidth: 2,
   },
 
@@ -84,7 +90,7 @@ export const styles = StyleSheet.create({
     borderTopColor: "#a99696ff",
     padding: 16,
     justifyContent: "center",
-    backgroundColor: "rgb(242, 245, 248)ff",
+    backgroundColor: "39afaf",
   },
 
   button: { // generic buttons 
@@ -97,14 +103,22 @@ export const styles = StyleSheet.create({
     borderColor: "#c7bebeff",
   },
 
-  buttonText: { color: "black", fontSize: 18, fontWeight: "700", },
+  buttonText: { color: "white", fontSize: 18, fontWeight: "700", },
 
   selectedText: { color: "#fff",},
 
   BannerText: {
     fontWeight: "800",
     paddingTop: 90,
-    color: "black",
+    color: "#f4f4f4",
+    fontSize: 25,
+    textAlign: "center",
+  },
+
+  SecondBannerText: {
+    fontWeight: "800",
+    paddingTop: 25,
+    color: "#f4f4f4",
     fontSize: 25,
     textAlign: "center",
   },
@@ -124,11 +138,9 @@ export const styles = StyleSheet.create({
     borderColor: "#gray",
   },
 
-
-  // User Preferces 
     Prefcontainer: {
     flex: 1,
-    backgroundColor: "#f4f4f4",
+    backgroundColor: "#333333",
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 30,
@@ -137,7 +149,7 @@ export const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "700",
     marginBottom: 20,
-    color: "#111",
+    color: "#ffffff",
   },
 
   // Input row
@@ -151,23 +163,23 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderWidth: 2,
-    borderColor: "#ff5e65",
+    borderColor: "#39afaf",
     borderRadius: 4,
     paddingHorizontal: 14,
     fontSize: 16,
-    color: "#111",
-    backgroundColor: "#fff",
+    color: "#ffffff",
+    backgroundColor: "#4b4b4b",
   },
   addButton: {
     height: 48,
     paddingHorizontal: 20,
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     borderRadius: 4,
     justifyContent: "center",
     alignItems: "center",
   },
   addButtonPressed: {
-    backgroundColor: "#FA2533",
+    backgroundColor: "#39afaf",
   },
   addButtonText: {
     color: "#fff",
@@ -183,16 +195,16 @@ export const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     borderRadius: 20,
     paddingVertical: 16,
     paddingHorizontal: 18,
     gap: 14,
     borderWidth: 2,
-    borderColor: "#FA2533",
+    borderColor: "#39afaf",
   },
   chipPressed: {
-    backgroundColor: "#FA2533",
+    backgroundColor: "#39afaf",
   },
   chipX: {
     color: "#fff",
@@ -216,13 +228,13 @@ export const styles = StyleSheet.create({
   saveButton: {
     marginTop: 16,
     height: 52,
-    backgroundColor: "#ff5e65",
+    backgroundColor: "#39afaf",
     borderRadius: 6,
     justifyContent: "center",
     alignItems: "center",
   },
   saveButtonPressed: {
-    backgroundColor: "#FA2533",
+    backgroundColor: "#268b8b",
   },
   saveButtonText: {
     color: "#fff",
