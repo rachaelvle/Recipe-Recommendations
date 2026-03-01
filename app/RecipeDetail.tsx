@@ -7,8 +7,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, Recipe as APIRecipe } from '../lib/api';
+import { LoadCurrentUserID } from '../Utils/jsonCommands';
 
 const { width } = Dimensions.get('window');
 
@@ -20,18 +20,24 @@ export default function RecipeDetail() {
  const [error, setError] = useState<string | null>(null);
  const [crossedIngredients, setCrossedIngredients] = useState<string[]>([]);
 
- const currentUserId = 1;
+ // we'll load the logged‑in user's ID from storage
+ const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
  useEffect(() => {
    const fetchDetailAndPantry = async () => {
      try {
        setLoading(true);
-      
+       // make sure we know who is logged in
+       const uid = await LoadCurrentUserID();
+       setCurrentUserId(uid);
+
        const [recipeData, userProfile] = await Promise.all([
          (api as any).getRecipeDetail(Number(id)),
-         (api as any).getUserProfile ? (api as any).getUserProfile(currentUserId).catch(() => null) : Promise.resolve(null)
+         uid && (api as any).getUserProfile
+           ? (api as any).getUserProfile(uid).catch(() => null)
+           : Promise.resolve(null),
        ]);
-      
+
        setRecipe(recipeData);
 
        if (userProfile && (userProfile as any).ingredients) {
