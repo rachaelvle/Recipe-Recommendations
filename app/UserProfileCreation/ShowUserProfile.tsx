@@ -31,9 +31,9 @@ export default function ProfileScreen() {
 
       const builtUser = {
         username: USER.user.username,
-        allergies: allergyList,
-        prefDiets: USER.preferences.defaultCuisines, // will impliment prefernce list later on
-        prefCuisines: USER.preferences.defaultDiets,
+        allergies: allergyList ?? [],
+        prefDiets: USER.preferences.defaultCuisines?? [], // will impliment prefernce list later on
+        prefCuisines: USER.preferences.defaultDiets?? [],
       };
 
       setUser(builtUser); // set user as the one we just made
@@ -93,7 +93,7 @@ export default function ProfileScreen() {
           styles.startButton,
           pressed && { opacity: 0.9 },
         ]}
-        onPress={() => router.push("/")}
+        onPress={() => router.push("/(tabs)")}
       >
         <Text style={styles.startText}>Lets start cooking!</Text>
       </Pressable>

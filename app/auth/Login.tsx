@@ -25,6 +25,7 @@ export default function Login() {
     // just for testing right now will make actual account checking maybe :3
     try {
       const loginResponse = await api.login(UserName, password); // check database for user login
+      
       StoreCurrentUserID(loginResponse.user.id) // STORE USER ID TO PASS ONTO NEXT PAGE ON THE STACK
 
       // *************************************** USING FOR TESTING RIGHT NOW CHANGE TO SOMETHING ELSE LATER **************************************************
