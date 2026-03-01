@@ -95,7 +95,7 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
 
 export default function Index() { 
   const router = useRouter();
-  const { pantryIngredients } = usePantry();
+  const { pantryIngredients, clearPantry, reloadPantry } = usePantry();
 
   // STATE
   const [query, setQuery] = useState<string>('');
@@ -124,6 +124,10 @@ export default function Index() {
     (async () => {
       const uid = await LoadCurrentUserID();
       setCurrentUserId(uid);
+      // Reload pantry with new user's data
+      if (uid) {
+        await reloadPantry(uid);
+      }
     })();
   }, []);
 
@@ -155,9 +159,33 @@ export default function Index() {
 
   // LOGOUT
   const handleLogout = useCallback(async () => {
-    await ClearCurrentUserID();
-    router.replace('/auth/Login'); // adjust this path to match your login screen route
-  }, [router]);
+    try {
+      // Clear all state
+      setQuery('');
+      setActiveCategory('all');
+      setActiveFilters({ 
+        difficulty: null, 
+        maxTime: null, 
+        cuisine: null, 
+        dietary: [], 
+        mealType: null 
+      });
+      setResults(ALL_RECIPES_DATA);
+      setCurrentUserId(null);
+      
+      // Clear pantry context
+      clearPantry();
+      
+      // Clear stored user ID
+      await ClearCurrentUserID();
+      
+      // Navigate to login
+      router.replace('/auth/Login'); // adjust this path to match your login screen route
+    } catch (error) {
+      console.error("Error during logout:", error);
+      router.replace('/auth/Login');
+    }
+  }, [router, clearPantry]);
 
   // RENDER HELPERS
   const renderVerticalCard = ({ item }: { item: APIRecipe }) => {
