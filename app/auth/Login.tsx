@@ -44,7 +44,7 @@ export default function Login() {
       
       <TextInput
         placeholder="Username"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ffffff"
         style={styles.input}
         value={UserName}
         autoCapitalize="none"
@@ -54,7 +54,7 @@ export default function Login() {
 
       <TextInput
         placeholder="Password"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#ffffff"
         style={styles.input}
         value={password}
         onChangeText={setPassword} // sets password when user inputs in text box
@@ -69,7 +69,7 @@ export default function Login() {
 
       <View style={{ marginTop: 30 }}>
         <Pressable onPress={() => router.push('/UserProfileCreation/CreateUserProfile')}>
-          <Text style={{ textAlign: "center", color: "black", fontWeight: "600" }}>
+          <Text style={{ textAlign: "center", color: "#f4f4f4", fontWeight: "600" }}>
             No Account? Sign Up
           </Text>
         </Pressable>

@@ -1,19 +1,20 @@
 import { api } from "@/lib/api";
 import { styles } from "@/styles/SimpleStyleSheet";
-import { LoadCurrentUserID } from "@/Utils/jsonCommands";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { LoadCurrentUserID } from "../../Utils/jsonCommands";
 
-const SimpleDietList = new Set<string>([
+const Diets = [
   "vegan",
   "vegetarian",
   "gluten free",
   "dairy free",
   "paleolithic",
   "primal",
-]);
-const SimpleCuisineList = new Set<string>([
+];
+
+const Cuisines = [
   "chinese",
   "asian",
   "mediterranean",
@@ -21,151 +22,165 @@ const SimpleCuisineList = new Set<string>([
   "european",
   "mexican",
   "greek",
-]);
+];
 
-export default function GetUserPreference() {
+export default function GetUserAllergies() {
   const { isEditing } = useLocalSearchParams();
 
   const editingMode = isEditing === "true"; // convert string → boolean
 
   const [user, setUser] = useState<number | null>(0);
-
-  const [chips, setChips] = useState<string[]>([]);
-  const [text, setText] = useState("");
+  const [selectedDiets, setSelectedDiet] = useState<Set<number>>(new Set()); // set of
+  const [selectedCuisine, setSelectedCuisine] = useState<Set<number>>(new Set()); // set of
 
   useEffect(() => {
     const updateUI = async () => {
+
       const currUserID = await LoadCurrentUserID();
-
+      
       setUser(currUserID);
-
+      
       if (!isEditing) {
-        return;
-      } // not editing i.e. first time loading
-
+          return;
+        } // not editing i.e. first time loading
+      
       if (currUserID) {
         let USER = await api.getUserProfile(currUserID); // get the user data
 
-        let prefs = [
-          ...USER.preferences.defaultDiets,
-          ...USER.preferences.defaultCuisines,
-        ];
-        setChips(prefs);
-      }
-    };
+        // for updating 
+        let Dietlist = [];
+        let CuisineList = [];
 
-    updateUI();
-  }, []);
+        let UserDiet = USER.preferences.defaultDiets
+        let UserCuisine = USER.preferences.defaultCuisines
+
+        // lsit handling for diets
+        for (const promise of UserDiet) {
+          const index = Diets.findIndex(
+            (o) => o.toLowerCase() === promise.toLowerCase(),
+          );
+          if (index !== -1) Dietlist.push(index);
+        }
+        setSelectedDiet(new Set(Dietlist));
+
+        // list handling for cuisines
+        for (const promise of UserCuisine) {
+          const index = Cuisines.findIndex(
+            (o) => o.toLowerCase() === promise.toLowerCase(),
+          );
+          if (index !== -1) CuisineList.push(index);
+        }
+
+        setSelectedCuisine(new Set(CuisineList));
+      }
+    }; updateUI(); }, []);
 
   if (!user) {
     return <Text>Loading profile...</Text>;
   }
 
-  const addChip = (raw: string) => {
-    const input = raw.trim();
-    if (!input) return;
-    if (chips.includes(input.toLowerCase())) return;
-    setChips((prev) => [...prev, input.toLowerCase()]);
-    setText("");
-  };
+    const UpdateuserPreference = async () => {
 
-  const removeChip = (chip: string) => {
-    setChips((prev) => prev.filter((c) => c !== chip));
-  };
+      const DietList = Array.from(selectedDiets).map((i) => Diets[i]);
+      const CuisinesList = Array.from(selectedCuisine).map((i) => Cuisines[i]);
 
-  const sortInputs = () => {
-    let Diets: string[] = [];
-    let Cuisines: string[] = [];
-
-    // since we are demoing we only need the simple inputs, I will include some simple ones for profile
-    for (const item of chips) {
-      let pref = item.toLowerCase().trim();
-      if (SimpleDietList.has(pref)) {
-        Diets.push(item);
-      } else {
-        Cuisines.push(item);
-      }
-    }
-
-    return [Diets, Cuisines];
-  };
-
-  const UpdateuserPrefernce = async () => {
-    const currUserID: number | null = await LoadCurrentUserID();
-    if (currUserID === null) return;
-    let sortedPreferences = sortInputs();
-    const payload = {
-      defaultCuisines: Array.from(sortedPreferences[0]),
-      defaultDiets: Array.from(sortedPreferences[1]),
+      const currUserID: number | null = await LoadCurrentUserID();
+      if (currUserID === null) return;
+      const payload = {
+        defaultCuisines: Array.from(CuisinesList),
+        defaultDiets: Array.from(DietList),
+      };
+  
+      await api.updatePreferences(currUserID, payload);
+      router.replace("/UserProfileCreation/ShowUserProfile");
     };
 
-    await api.updatePreferences(currUserID, payload);
-    router.replace("/UserProfileCreation/ShowUserProfile");
+  const toggleDiets = (id: number) => {
+    // function called toggle, takes an integer and updates the box that is tied to that integer
+    setSelectedDiet((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleCuisine = (id: number) => {
+    // function called toggle, takes an integer and updates the box that is tied to that integer
+    setSelectedCuisine((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   return (
-    <View style={styles.Prefcontainer}>
-      <Text style={styles.title}>Tell us about your tastes!</Text>
-
-      {/* Input bar */}
-      <View style={styles.inputRow}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="E.g. Mexican"
-          placeholderTextColor="#999"
-          style={styles.Headerinput}
-          returnKeyType="done"
-          onSubmitEditing={() => addChip(text)}
-        />
-        <Pressable
-          onPress={() => addChip(text)}
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
-          ]}
-        >
-          <Text style={styles.addButtonText}>Add</Text>
-        </Pressable>
-      </View>
-
-      {/* Chips list */}
+    // design if pressed button
+    <View style={styles.preferenceContainer}>
+      
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.chipList}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {chips.length === 0 ? (
-          <Text style={styles.emptyHint}>No preferences added yet.</Text>
-        ) : (
-          chips.map((c) => (
+        <Text style={styles.BannerText}> What kind of Diet are you on?</Text>
+        {Diets.map((label, i) => {
+          const on = selectedDiets.has(i);
+
+          return (
+            // dynamic button, checks state and add/remove style based on current state
             <Pressable
-              key={c}
-              onPress={() => removeChip(c)}
+              key={i}
+              onPress={() => toggleDiets(i)}
               style={({ pressed }) => [
-                styles.chip,
-                pressed && styles.chipPressed,
+                styles.ToggleButton,
+                on && styles.selected,
+                pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.chipX}>✕</Text>
-              <Text style={styles.chipText}>{c}</Text>
+              <Text style={[styles.buttonText, on && styles.selectedText]}>
+                {label}
+              </Text>
             </Pressable>
-          ))
-        )}
-      </ScrollView>
+          );
+        })}
 
-      {/* Save button */}
-      {chips.length > 0 && (
+        <Text style={styles.SecondBannerText}> What type of cuisine do you enjoy?</Text>
+        {Cuisines.map((label, i) => {
+          const on = selectedCuisine.has(i);
+
+          return (
+            // dynamic button, checks state and add/remove style based on current state
+            <Pressable
+              key={i}
+              onPress={() => toggleCuisine(i)}
+              style={({ pressed }) => [
+                styles.ToggleButton,
+                on && styles.selected,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.buttonText, on && styles.selectedText]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+
+
+      </ScrollView>
+      <View style={styles.footer}>
         <Pressable
-          onPress={UpdateuserPrefernce}
           style={({ pressed }) => [
-            styles.saveButton,
-            pressed && styles.saveButtonPressed,
-          ]}
+            styles.YesButton,
+            pressed && { opacity: 0.85 },
+          ]} //   "User chose:", choices
+          onPress={async () => {
+            UpdateuserPreference();
+          }}
         >
-          <Text style={styles.saveButtonText}>Save Preferences</Text>
+          <Text style={styles.Text}>CONTINUE</Text>
         </Pressable>
-      )}
+      </View>
     </View>
   );
 }
