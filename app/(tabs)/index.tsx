@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
 import { api, Recipe as APIRecipe, SearchBody } from '../../lib/api'; 
 import { usePantry } from '../../src/context/PantryContext';
+import { LoadCurrentUserID } from '../../Utils/jsonCommands';
 
 // 1. Define the UI Filter state interface
 interface FilterState {
@@ -75,7 +76,7 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
   return (
     <View style={styles.dietSection}>
       <Text style={styles.dropdownLabel}>Dietary & Allergies</Text>
-      <div style={styles.chipContainer}>
+      <View style={styles.chipContainer}>
         {options.map((opt) => {
           const isActive = selected.includes(opt.id);
           return (
@@ -85,7 +86,7 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
             </TouchableOpacity>
           );
         })}
-      </div>
+      </View>
     </View>
   );
 };
@@ -107,6 +108,9 @@ export default function Index() {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [health, setHealth] = useState<string>("checking");
 
+  // logged-in user ID for search personalization
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
   // Greeting & Health Check
   useEffect(() => {
     const hour = new Date().getHours();
@@ -115,6 +119,12 @@ export default function Index() {
     else setGreeting('Good Evening');
 
     api.health().then(() => setHealth("ok")).catch(() => setHealth("error"));
+
+    // load stored user id for personalized search
+    (async () => {
+      const uid = await LoadCurrentUserID();
+      setCurrentUserId(uid);
+    })();
   }, []);
 
   // Backend Search Fetch
@@ -131,6 +141,7 @@ export default function Index() {
                 timeBuckets: activeFilters.maxTime ? [activeFilters.maxTime] : [],
               },
               userIngredients: pantryIngredients,
+              userId: currentUserId ?? undefined, // include if we know the user
             };
         const response = await api.search(searchBody);
         setResults(response.results);
@@ -140,7 +151,7 @@ export default function Index() {
       }
     };
     fetchData();
-  }, [query, activeFilters, pantryIngredients]);
+  }, [query, activeFilters, pantryIngredients, currentUserId]);
 
   // RENDER HELPERS
   const renderVerticalCard = ({ item }: { item: APIRecipe }) => {

@@ -217,7 +217,10 @@ class EnhancedRecipeSearchEngine {
       }
     }
 
-    const ingredientsToUse = [...(params.userIngredients || []), ...userIngredients].filter((v, i, a) => a.indexOf(v) === i);
+    const ingredientsToUse = [
+      ...(params.userIngredients || []).map(i => normalizeText(i)),
+      ...userIngredients
+    ].filter((v, i, a) => a.indexOf(v) === i);
 
     if (params.searchQuery?.trim()) {
       const parsed = this.parseSearchQuery(params.searchQuery);

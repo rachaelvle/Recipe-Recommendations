@@ -1,5 +1,5 @@
-import React from 'react'; // React is from 'react'
-import { Tabs } from 'expo-router'; // Tabs is from 'expo-router'
+import React from 'react';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
@@ -21,6 +21,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Ionicons name="home" size={24} color={color} />
           ),
+          headerShown: false,
+          headerStyle: { backgroundColor: '#25292e' },
+          headerTintColor: '#fff',
         }}
       />
 
@@ -31,6 +34,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="basket" size={size} color={color} />
           ),
+          headerShown: false,
+          headerStyle: { backgroundColor: '#25292e' },
+          headerTintColor: '#fff',
         }}
       />
     </Tabs>

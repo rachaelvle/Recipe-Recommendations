@@ -20,3 +20,7 @@ export const LoadCurrentUserID = async () => {
   const parsed = JSON.parse(value) as number;
   return parsed;
 };
+
+export async function ClearCurrentUserID() { // log out
+  await AsyncStorage.removeItem('currUser'); // or however you're storing it
+}
