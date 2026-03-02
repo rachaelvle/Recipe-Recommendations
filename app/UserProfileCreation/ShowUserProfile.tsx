@@ -23,7 +23,11 @@ export default function ProfileScreen() {
       }
 
       try {
-        const USER = await api.getUserProfile(currUserID);
+        const USER = await api.getUserProfile(currUserID) as {
+          user: { username: string };
+          allergies: { allergen: string }[];
+          preferences?: { defaultDiets?: string[]; defaultCuisines?: string[] };
+        };
         if (!USER) {
           throw new Error('Profile missing');
         }
@@ -101,7 +105,7 @@ export default function ProfileScreen() {
           styles.startButton,
           pressed && { opacity: 0.9 },
         ]}
-        onPress={() => router.push("/")}
+        onPress={() => router.replace("/(tabs)")}
       >
         <Text style={styles.startText}>Lets start cooking!</Text>
       </Pressable>

@@ -12,7 +12,6 @@ import { api, Recipe as APIRecipe, SearchBody } from '../../lib/api';
 import { usePantry } from '../../src/context/PantryContext';
 import { LoadCurrentUserID } from '../../Utils/jsonCommands';
 
-// 1. Define the UI Filter state interface
 interface FilterState {
   difficulty: string | null;
   maxTime: string | null;
@@ -21,7 +20,6 @@ interface FilterState {
   mealType: string | null;
 }
 
-// 2. Load and Type your local backup data
 const RECIPE_MAP = require('../../backend/recipes.json');
 const ALL_RECIPES_DATA: APIRecipe[] = Object.values(RECIPE_MAP);
 
@@ -35,7 +33,6 @@ const CATEGORIES = [
   { id: 'spicy', label: 'Spicy', emoji: '🌶️' },
 ];
 
-// --- SUB-COMPONENTS ---
 
 const FilterDropdown = ({ 
   label, value, options, onSelect 
@@ -91,13 +88,12 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
   );
 };
 
-// --- MAIN COMPONENT ---
 
 export default function Index() { 
   const router = useRouter();
   const { pantryIngredients } = usePantry();
 
-  // STATE
+  // state
   const [query, setQuery] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeFilters, setActiveFilters] = useState<FilterState>({ 
@@ -153,7 +149,7 @@ export default function Index() {
     fetchData();
   }, [query, activeFilters, pantryIngredients, currentUserId]);
 
-  // RENDER HELPERS
+  // render filters
   const renderVerticalCard = ({ item }: { item: APIRecipe }) => {
     // Check match count using ingredients from backend (or fallback to local schema)
     const recipeIngs = item.extendedIngredients?.map(i => i.name) || (item as any).ingredients || [];
@@ -276,7 +272,7 @@ export default function Index() {
   );
 }
 
-// --- STYLES ---
+// styles
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#25292e', paddingTop: Platform.OS === 'android' ? 40 : 0 },

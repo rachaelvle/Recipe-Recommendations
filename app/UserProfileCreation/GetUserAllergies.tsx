@@ -29,7 +29,7 @@ export default function GetUserPreference() {
       let allergens: string[] = []
       if (currUserID) {
         
-        let USER = await api.getUserProfile(currUserID); // get the user data
+        let USER = await api.getUserProfile(currUserID) as any; // get the user data
         for (const promise of USER.allergies) {
           allergens.push(promise.allergen)
          }
@@ -63,7 +63,7 @@ export default function GetUserPreference() {
 
     if (currUserID === null) return;
 
-    let UserProfile = await api.getUserProfile(currUserID);
+    let UserProfile = await api.getUserProfile(currUserID) as any;
     let currUserAllergies = UserProfile.allergies; // lsit of allergies
 
     // remove any allergies that were not selected

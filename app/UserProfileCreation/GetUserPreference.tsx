@@ -45,7 +45,7 @@ export default function GetUserAllergies() {
         } // not editing i.e. first time loading
       
       if (currUserID) {
-        let USER = await api.getUserProfile(currUserID); // get the user data
+        let USER = await api.getUserProfile(currUserID) as any; // get the user data
 
         // for updating 
         let Dietlist = [];
