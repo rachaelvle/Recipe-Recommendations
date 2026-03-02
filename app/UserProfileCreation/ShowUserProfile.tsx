@@ -105,7 +105,7 @@ export default function ProfileScreen() {
           styles.startButton,
           pressed && { opacity: 0.9 },
         ]}
-        onPress={() => router.replace("/(tabs)")}
+        onPress={() => router.push("/(tabs)/")}
       >
         <Text style={styles.startText}>Lets start cooking!</Text>
       </Pressable>

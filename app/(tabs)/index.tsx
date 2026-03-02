@@ -1,6 +1,6 @@
 // Main screen with search, filters, and recipe listings
 // this code was written with the assistance of AI 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, FlatList, Image, TouchableOpacity, 
   StatusBar, ScrollView, Platform, Modal, Dimensions
@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
 import { api, Recipe as APIRecipe, SearchBody } from '../../lib/api'; 
 import { usePantry } from '../../src/context/PantryContext';
-import { LoadCurrentUserID } from '../../Utils/jsonCommands';
+import { LoadCurrentUserID, ClearCurrentUserID } from '../../Utils/jsonCommands';
 
 interface FilterState {
   difficulty: string | null;
@@ -91,7 +91,7 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
 
 export default function Index() { 
   const router = useRouter();
-  const { pantryIngredients } = usePantry();
+  const { pantryIngredients, clearPantry, reloadPantry } = usePantry();
 
   // state
   const [query, setQuery] = useState<string>('');
@@ -120,6 +120,10 @@ export default function Index() {
     (async () => {
       const uid = await LoadCurrentUserID();
       setCurrentUserId(uid);
+      // Reload pantry with new user's data
+      if (uid) {
+        await reloadPantry(uid);
+      }
     })();
   }, []);
 
@@ -149,7 +153,37 @@ export default function Index() {
     fetchData();
   }, [query, activeFilters, pantryIngredients, currentUserId]);
 
-  // render filters
+  // LOGOUT
+  const handleLogout = useCallback(async () => {
+    try {
+      // Clear all state
+      setQuery('');
+      setActiveCategory('all');
+      setActiveFilters({ 
+        difficulty: null, 
+        maxTime: null, 
+        cuisine: null, 
+        dietary: [], 
+        mealType: null 
+      });
+      setResults(ALL_RECIPES_DATA);
+      setCurrentUserId(null);
+      
+      // Clear pantry context
+      clearPantry();
+      
+      // Clear stored user ID
+      await ClearCurrentUserID();
+      
+      // Navigate to login
+      router.replace('/auth/Login'); // adjust this path to match your login screen route
+    } catch (error) {
+      console.error("Error during logout:", error);
+      router.replace('/auth/Login');
+    }
+  }, [router, clearPantry]);
+
+  // RENDER HELPERS
   const renderVerticalCard = ({ item }: { item: APIRecipe }) => {
     // Check match count using ingredients from backend (or fallback to local schema)
     const recipeIngs = item.extendedIngredients?.map(i => i.name) || (item as any).ingredients || [];
@@ -195,10 +229,22 @@ export default function Index() {
     return (
       <View style={{ backgroundColor: '#25292e' }}>
         <View style={styles.headerContainer}>
-          <View style={styles.healthBadge}>
-            <Text style={[styles.healthText, health === "ok" && {color: '#27ae60'}, health === "error" && {color: '#c00'}]}>
-              {health === "ok" ? "🟢 Backend Connected" : health === "error" ? "🔴 Backend Offline" : "🔌 Connecting..."}
-            </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <View style={styles.healthBadge}>
+              <Text style={[styles.healthText, health === "ok" && {color: '#27ae60'}, health === "error" && {color: '#c00'}]}>
+                {health === "ok" ? "🟢 Backend Connected" : health === "error" ? "🔴 Backend Offline" : "🔌 Connecting..."}
+              </Text>
+            </View>
+              <TouchableOpacity 
+                onPress={handleLogout} 
+                style={styles.logoutBtn}
+                activeOpacity={0.7}
+              >
+                <View style={styles.logoutContent}>
+                  <Ionicons name="log-out-outline" size={20} color="#ff4444" />
+                  <Text style={styles.logoutText}>Log Out</Text>
+                </View>
+              </TouchableOpacity>
           </View>
           <Text style={styles.superHeader}>{greeting.toUpperCase()}, CHEF 👨‍🍳</Text>
           <Text style={styles.mainHeader}>What do you want to cook today?</Text>
@@ -228,7 +274,7 @@ export default function Index() {
         </View>
       </View>
     );
-  }, [greeting, query, pantryIngredients, activeFilters, health]);
+  }, [greeting, query, pantryIngredients, activeFilters, health, handleLogout]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -278,7 +324,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#25292e', paddingTop: Platform.OS === 'android' ? 40 : 0 },
   mainList: { paddingBottom: 40 },
   headerContainer: { paddingHorizontal: 24, marginTop: 10, marginBottom: 20 },
-  healthBadge: { marginBottom: 10 },
+  healthBadge: { marginBottom: 0 },
   healthText: { fontSize: 12, fontWeight: '600', color: '#888' },
   superHeader: { fontSize: 12, color: '#39afafff', fontWeight: '800', letterSpacing: 1, marginBottom: 5 },
   mainHeader: { fontSize: 30, fontWeight: '800', color: '#FFFFFF', lineHeight: 36 },
@@ -321,4 +367,25 @@ const styles = StyleSheet.create({
   chipEmoji: { marginRight: 6 },
   dietChipText: { color: '#BBB', fontSize: 13, fontWeight: '600' },
   dietChipTextActive: { color: '#fff' },
+  logoutBtn: {
+    marginTop: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 68, 68, 0.3)', 
+    backgroundColor: '#333333',             
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10, // Space between icon and text
+  },
+  logoutText: {
+    color: '#ff4444', // Matching red text
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
