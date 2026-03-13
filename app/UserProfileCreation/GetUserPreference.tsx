@@ -53,7 +53,9 @@ export default function GetUserAllergies() {
 
         let UserDiet = USER.preferences.defaultDiets
         let UserCuisine = USER.preferences.defaultCuisines
-
+        if (!UserDiet) {UserDiet=[];}
+        if (!UserCuisine) {UserCuisine=[];}
+        
         // lsit handling for diets
         for (const promise of UserDiet) {
           const index = Diets.findIndex(
