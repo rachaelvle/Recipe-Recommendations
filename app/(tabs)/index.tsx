@@ -25,14 +25,6 @@ const ALL_RECIPES_DATA: APIRecipe[] = Object.values(RECIPE_MAP);
 
 const { width } = Dimensions.get('window');
 
-const CATEGORIES = [
-  { id: 'all', label: 'All', emoji: '🍽️' },
-  { id: 'breakfast', label: 'Breakfast', emoji: '🍳' },
-  { id: 'healthy', label: 'Healthy', emoji: '🥑' },
-  { id: 'sweet', label: 'Sweet', emoji: '🍩' },
-  { id: 'spicy', label: 'Spicy', emoji: '🌶️' },
-];
-
 
 const FilterDropdown = ({ 
   label, value, options, onSelect 
@@ -95,8 +87,7 @@ export default function Index() {
 
   // state
   const [query, setQuery] = useState<string>('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [activeFilters, setActiveFilters] = useState<FilterState>({ 
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
     difficulty: null, maxTime: null, cuisine: null, dietary: [], mealType: null 
   });
   const [results, setResults] = useState<APIRecipe[]>(ALL_RECIPES_DATA);
@@ -125,7 +116,7 @@ export default function Index() {
         await reloadPantry(uid);
       }
     })();
-  }, []);
+  }, [reloadPantry]);
 
   // Backend Search Fetch
   useEffect(() => {
@@ -137,8 +128,17 @@ export default function Index() {
                 diets: activeFilters.dietary,
                 cuisines: activeFilters.cuisine ? [activeFilters.cuisine] : [],
                 mealTypes: activeFilters.mealType ? [activeFilters.mealType] : [],
-                // This logic handles the "60+" by telling the backend the time limit
-                timeBuckets: activeFilters.maxTime ? [activeFilters.maxTime] : [],
+                timeBuckets: (() => {
+                  const timeMap: Record<string, string[]> = {
+                    '15 min':  ['0-15'],
+                    '30 min':  ['0-15', '16-30'],
+                    '45 min':  ['0-15', '16-30', '31-60'],
+                    '60 min':  ['0-15', '16-30', '31-60'],
+                    '60+ min': ['0-15', '16-30', '31-60', '60+'],
+                  };
+                  return activeFilters.maxTime ? (timeMap[activeFilters.maxTime] ?? []) : [];
+                })(),
+                difficulties: activeFilters.difficulty ? [activeFilters.difficulty.toLowerCase()] : [],
               },
               userIngredients: pantryIngredients,
               userId: currentUserId ?? undefined, // include if we know the user
@@ -158,8 +158,7 @@ export default function Index() {
     try {
       // Clear all state
       setQuery('');
-      setActiveCategory('all');
-      setActiveFilters({ 
+      setActiveFilters({
         difficulty: null, 
         maxTime: null, 
         cuisine: null, 
@@ -223,7 +222,7 @@ export default function Index() {
   );
 
   const ListHeader = useMemo(() => {
-    const isFiltering = activeFilters.difficulty || activeFilters.maxTime || activeFilters.cuisine || activeFilters.dietary.length > 0;
+    const isFiltering = activeFilters.difficulty || activeFilters.maxTime || activeFilters.cuisine || activeFilters.dietary.length > 0 || activeFilters.mealType;
     let suggested = ALL_RECIPES_DATA.slice(0, 3);
 
     return (

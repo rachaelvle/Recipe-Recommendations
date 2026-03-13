@@ -167,7 +167,8 @@ class EnhancedRecipeSearchEngine {
     const normalizedAllergens = allergens.map(a => normalizeText(a));
     return recipe.extendedIngredients.some(ingredient => {
       const normalizedIngredient = normalizeText(ingredient.name);
-      return normalizedAllergens.some(allergen => 
+      if (!normalizedIngredient) return false;
+      return normalizedAllergens.some(allergen =>
         normalizedIngredient.includes(allergen) || allergen.includes(normalizedIngredient)
       );
     });
@@ -250,6 +251,14 @@ class EnhancedRecipeSearchEngine {
     if (explicitFilters.diets?.length) {
       conditions.push(`id IN (SELECT recipeId FROM idx_diet WHERE diet IN (${explicitFilters.diets.map(() => '?').join(',')}))`);
       sqlParams.push(...explicitFilters.diets.map(d => d.toLowerCase()));
+    }
+    if (explicitFilters.timeBuckets?.length) {
+      conditions.push(`id IN (SELECT recipeId FROM idx_time_bucket WHERE bucket IN (${explicitFilters.timeBuckets.map(() => '?').join(',')}))`);
+      sqlParams.push(...explicitFilters.timeBuckets);
+    }
+    if (explicitFilters.difficulties?.length) {
+      conditions.push(`id IN (SELECT recipeId FROM idx_difficulty WHERE difficulty IN (${explicitFilters.difficulties.map(() => '?').join(',')}))`);
+      sqlParams.push(...explicitFilters.difficulties.map(d => d.toLowerCase()));
     }
 
     let query = `SELECT DISTINCT id FROM recipes`;
