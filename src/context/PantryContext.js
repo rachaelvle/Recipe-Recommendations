@@ -64,20 +64,20 @@ export const PantryProvider = ({ children }) => {
     }
   };
 
-  const clearPantry = () => {
+  const clearPantry = useCallback(() => {
     setPantryIngredients([]);
     setUserId(null);
     setLoading(false);
-  };
+  }, []);
 
-  const reloadPantry = async (uid) => {
+  const reloadPantry = useCallback(async (uid) => {
     if (uid) {
       setUserId(uid);
       await fetchPantry(uid);
     } else {
       clearPantry();
     }
-  };
+  }, [fetchPantry, clearPantry]);
 
   return (
     <PantryContext.Provider value={{ pantryIngredients, addToPantry, removeFromPantry, loading, clearPantry, reloadPantry }}>
