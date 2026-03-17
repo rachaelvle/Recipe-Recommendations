@@ -58,9 +58,12 @@ const DietarySection = ({ selected, onToggle }: { selected: string[], onToggle: 
     { id: 'vegan', label: 'Vegan', icon: '🌿' },
     { id: 'vegetarian', label: 'Vegetarian', icon: '🥗' },
     { id: 'pescatarian', label: 'Pescatarian', icon: '🐟' },
-    { id: 'carnivore', label: 'Carnivore', icon: '🥩' },
-    { id: 'gluten-free', label: 'Gluten Free', icon: '🌾' },
-    { id: 'dairy-free', label: 'Dairy Free', icon: '🧀' },
+    { id: 'ketogenic', label: 'Ketogenic', icon: '🥑' },
+    { id: 'gluten free', label: 'Gluten Free', icon: '🌾' },
+    { id: 'dairy free', label: 'Dairy Free', icon: '🧀' },
+    { id: 'paleolithic', label: 'Paleo', icon: '🍖' },
+    { id: 'whole 30', label: 'Whole30', icon: '🥦' },
+    { id: 'fodmap friendly', label: 'FODMAP', icon: '🫙' },
   ];
   return (
     <View style={styles.dietSection}>
@@ -132,7 +135,6 @@ export default function Index() {
                   const timeMap: Record<string, string[]> = {
                     '15 min':  ['0-15'],
                     '30 min':  ['0-15', '16-30'],
-                    '45 min':  ['0-15', '16-30', '31-60'],
                     '60 min':  ['0-15', '16-30', '31-60'],
                     '60+ min': ['0-15', '16-30', '31-60', '60+'],
                   };
@@ -298,7 +300,7 @@ export default function Index() {
             </View>
             <ScrollView>
               <FilterDropdown label="Difficulty" value={activeFilters.difficulty} options={['Easy', 'Medium', 'Hard']} onSelect={(val) => setActiveFilters({...activeFilters, difficulty: val})} />
-              <FilterDropdown label="Max Cooking Time" value={activeFilters.maxTime} options={['15 min', '30 min', '45 min', '60 min', '60+ min']} onSelect={(val) => setActiveFilters({...activeFilters, maxTime: val})} />
+              <FilterDropdown label="Max Cooking Time" value={activeFilters.maxTime} options={['15 min', '30 min', '60 min', '60+ min']} onSelect={(val) => setActiveFilters({...activeFilters, maxTime: val})} />
                 <FilterDropdown label="Type of Meal" value={activeFilters.mealType} options={['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']} onSelect={(val) => setActiveFilters({...activeFilters, mealType: val})}/>
               <FilterDropdown label="Cuisine" value={activeFilters.cuisine} options={['Italian', 'Mexican', 'American', 'Asian', 'Indian', 'French']} onSelect={(val) => setActiveFilters({...activeFilters, cuisine: val})}/>
               

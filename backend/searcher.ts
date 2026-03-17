@@ -260,6 +260,10 @@ class EnhancedRecipeSearchEngine {
       conditions.push(`id IN (SELECT recipeId FROM idx_difficulty WHERE difficulty IN (${explicitFilters.difficulties.map(() => '?').join(',')}))`);
       sqlParams.push(...explicitFilters.difficulties.map(d => d.toLowerCase()));
     }
+    if (explicitFilters.mealTypes?.length) {
+      conditions.push(`id IN (SELECT recipeId FROM idx_dishType WHERE dishType IN (${explicitFilters.mealTypes.map(() => '?').join(',')}))`);
+      sqlParams.push(...explicitFilters.mealTypes.map(m => m.toLowerCase()));
+    }
 
     let query = `SELECT DISTINCT id FROM recipes`;
     if (conditions.length > 0) query += ` WHERE ${conditions.join(' AND ')}`;
@@ -320,12 +324,43 @@ class EnhancedRecipeSearchEngine {
         }
       }
 
-      // 4. Boosters
+      // 4. Boosters (from user context)
       if (boostPreferences.diets?.length) {
         const dietMatches = recipe.diets.filter(d => boostPreferences.diets.some(pref => pref.toLowerCase() === d.toLowerCase()));
         if (dietMatches.length > 0) {
           score += (dietMatches.length * 25);
           scoringDetails.push(`diet(+${dietMatches.length * 25})`);
+        }
+      }
+
+      if (boostPreferences.cuisines?.length) {
+        const cuisineMatches = recipe.cuisines.filter(c => boostPreferences.cuisines.some(pref => pref.toLowerCase() === c.toLowerCase()));
+        if (cuisineMatches.length > 0) {
+          score += (cuisineMatches.length * 7);
+          scoringDetails.push(`cuisine(+${cuisineMatches.length * 7})`);
+        }
+      }
+
+      if (boostPreferences.mealTypes?.length) {
+        const mealTypeMatches = recipe.dishTypes.filter(d => boostPreferences.mealTypes.some(pref => pref.toLowerCase() === d.toLowerCase()));
+        if (mealTypeMatches.length > 0) {
+          score += (mealTypeMatches.length * 10);
+          scoringDetails.push(`mealType(+${mealTypeMatches.length * 10})`);
+        }
+      }
+
+      if (boostPreferences.timeBuckets?.length) {
+        const recipeBucket = bucketTime(recipe.readyInMinutes);
+        if (boostPreferences.timeBuckets.includes(recipeBucket)) {
+          score += 20;
+          scoringDetails.push(`timeBucket(+20)`);
+        }
+      }
+
+      if (boostPreferences.difficulties?.length) {
+        if (boostPreferences.difficulties.some(d => d.toLowerCase() === recipe.difficulty.toLowerCase())) {
+          score += 8;
+          scoringDetails.push(`difficulty(+8)`);
         }
       }
 

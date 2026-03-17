@@ -8,20 +8,31 @@ import { LoadCurrentUserID } from "../../Utils/jsonCommands";
 const Diets = [
   "vegan",
   "vegetarian",
+  "pescatarian",
+  "ketogenic",
   "gluten free",
   "dairy free",
   "paleolithic",
-  "primal",
+  "whole 30",
+  "fodmap friendly",
 ];
 
 const Cuisines = [
-  "chinese",
-  "asian",
-  "mediterranean",
+  "american",
   "italian",
-  "european",
   "mexican",
+  "asian",
+  "chinese",
+  "japanese",
+  "indian",
+  "mediterranean",
   "greek",
+  "french",
+  "thai",
+  "korean",
+  "middle eastern",
+  "spanish",
+  "vietnamese",
 ];
 
 export default function GetUserAllergies() {
