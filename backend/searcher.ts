@@ -203,16 +203,10 @@ class EnhancedRecipeSearchEngine {
         // Normalize preference arrays for consistent matching
         if (userPreferences) {
           if (userPreferences.defaultCuisines) {
-            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map((c: string) => normalizeText(c));
+            userPreferences.defaultCuisines = userPreferences.defaultCuisines.map((c: string) => c.toLowerCase());
           }
           if (userPreferences.defaultDiets) {
-            userPreferences.defaultDiets = userPreferences.defaultDiets.map((d: string) => normalizeText(d));
-          }
-          if (userPreferences.defaultMealTypes) {
-            userPreferences.defaultMealTypes = userPreferences.defaultMealTypes.map((m: string) => normalizeText(m));
-          }
-          if (userPreferences.defaultDifficulties) {
-            userPreferences.defaultDifficulties = userPreferences.defaultDifficulties.map((d: string) => normalizeText(d));
+            userPreferences.defaultDiets = userPreferences.defaultDiets.map((d: string) => d.toLowerCase());
           }
         }
       }
@@ -284,9 +278,9 @@ class EnhancedRecipeSearchEngine {
     const boostPreferences = {
       cuisines: filterEmpty(implicitPreferences.cuisines || userPreferences?.defaultCuisines),
       diets: filterEmpty(implicitPreferences.diets || userPreferences?.defaultDiets),
-      mealTypes: filterEmpty(implicitPreferences.mealTypes || userPreferences?.defaultMealTypes),
-      timeBuckets: filterEmpty(implicitPreferences.timeBuckets || userPreferences?.defaultTimeBuckets),
-      difficulties: filterEmpty(implicitPreferences.difficulties || userPreferences?.defaultDifficulties)
+      mealTypes: filterEmpty(implicitPreferences.mealTypes),
+      timeBuckets: filterEmpty(implicitPreferences.timeBuckets),
+      difficulties: filterEmpty(implicitPreferences.difficulties)
     };
 
     const normalizedKeywords = titleSearchKeywords.map(kw => normalizeText(kw)).filter(Boolean);
