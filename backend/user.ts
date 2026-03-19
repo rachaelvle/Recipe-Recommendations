@@ -53,7 +53,7 @@ export class UserDatabaseManager {
       )
     `);
 
-    // Preferences table (one-to-one with users)
+    // Preferences table (one-to-one with users, MealTypes, TimeBuckets, Difficulties not currently being used but can be in the future)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         userId INTEGER PRIMARY KEY,

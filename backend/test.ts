@@ -14,7 +14,7 @@ function displayRecipes(results: Recipe[], title: string = "") {
     console.log(title);
     console.log("=".repeat(70));
   }
-  
+
   if (results.length === 0) {
     console.log("\n❌ No recipes found\n");
     return;
@@ -23,13 +23,14 @@ function displayRecipes(results: Recipe[], title: string = "") {
   console.log(`\n✅ Found ${results.length} recipes:\n`);
 
   results.forEach((recipe, idx) => {
-    console.log(`${idx + 1}. ${recipe.title}`);
-    console.log(`   ⏱️  ${recipe.readyInMinutes} min`);
+    console.log(`${idx + 1}. ${recipe.title} [score: ${recipe.score?.toFixed(1) ?? 'N/A'}]`);
+    console.log(`   ⏱️  ${recipe.readyInMinutes} min | difficulty: ${recipe.difficulty}`);
     console.log(`   🍽️  Cuisine: ${recipe.cuisines.join(', ') || 'N/A'}`);
     console.log(`   🥗 Diet: ${recipe.diets.join(', ') || 'N/A'}`);
     console.log(`   📋 Type: ${recipe.dishTypes.join(', ') || 'N/A'}`);
-    
-    // Show first 8 ingredients
+    if (recipe.scoringDetails) {
+      console.log(`   📊 Scoring: ${recipe.scoringDetails}`);
+    }
     const ingList = recipe.extendedIngredients.slice(0, 8).map(i => i.name).join(', ');
     const more = recipe.extendedIngredients.length > 8 ? ` (+${recipe.extendedIngredients.length - 8} more)` : '';
     console.log(`   🥕 Ingredients: ${ingList}${more}`);
@@ -47,113 +48,89 @@ async function runTests() {
   const searchEngine = new EnhancedRecipeSearchEngine();
   const userDb = new UserDatabaseManager();
 
-  // TEST: Create test user with preferences
-  console.log("\n" + "=".repeat(70));
-  console.log("TEST 6: Create Test User");
+  // ============================================
+  // USER 1 SETUP: Health-conscious, Asian food preferences
+  // ============================================
+  console.log("=".repeat(70));
+  console.log("USER 1 SETUP");
   console.log("=".repeat(70));
 
-  console.log("\n👤 Creating test user 'test_user'...");
-  
-  // Check if user exists, delete if so
-  const existing = userDb.verifyUser("test_user", "password123");
-  if (existing) {
-    console.log("   User already exists, deleting...");
-    userDb.deleteUser(existing.id);
-  }
+  const existing1 = userDb.verifyUser("user_one", "password123");
+  if (existing1) userDb.deleteUser(existing1.id);
 
-  const testUserId = userDb.createUser("test_user", "password123");
-  console.log(`✅ User created with ID: ${testUserId}`);
+  const user1Id = userDb.createUser("user_one", "password123");
+  console.log(`\n👤 user_one (ID: ${user1Id})`);
 
-  // Add allergies
-  console.log("\n🚫 Adding allergies:");
-  userDb.addAllergy(testUserId, "peanuts");
-  userDb.addAllergy(testUserId, "shellfish");
-  console.log("   - peanuts");
-  console.log("   - shellfish");
+  userDb.addAllergy(user1Id, "peanuts");
+  userDb.addAllergy(user1Id, "shellfish");
+  console.log("🚫 Allergies: peanuts, shellfish");
 
-  // Add pantry ingredients
-  console.log("\n🥕 Adding pantry ingredients:");
-  const pantry = ["chicken", "rice", "tomato", "garlic", "onion", "olive oil", "pasta", "coconut", "pepper"];
-  pantry.forEach(ing => userDb.addIngredient(testUserId, ing));
-  console.log(`   - ${pantry.join(', ')}`);
+  ["chicken", "rice", "garlic", "ginger", "soy sauce", "sesame oil", "tofu", "bok choy"].forEach(i => userDb.addIngredient(user1Id, i));
+  console.log("🥕 Pantry: chicken, rice, garlic, ginger, soy sauce, sesame oil, tofu, bok choy");
 
-  // Set preferences
-  console.log("\n⚙️ Setting preferences:");
-  userDb.addCuisine(testUserId, "japanese");
-  userDb.addCuisine(testUserId, "thai");
-  userDb.addDiet(testUserId, "gluten free");
-  userDb.updatePreferences(testUserId, {
-    defaultMealTypes: ["dinner"],
-    defaultTimeBuckets: ["15-30", "30-45"],
-    defaultDifficulties: ["easy", "medium"]
-  });
-  console.log("   - Cuisines: japanese, thai");
-  console.log("   - Diet: gluten free");
-  console.log("   - Meal type: dinner");
-  console.log("   - Time: 15-45 minutes");
-  console.log("   - Difficulty: easy, medium");
+  userDb.addCuisine(user1Id, "japanese");
+  userDb.addCuisine(user1Id, "thai");
+  userDb.addDiet(user1Id, "gluten free");
+  console.log("⚙️  Preferences: japanese, thai | gluten free");
+
+  // USER 1 — QUERY A
+  console.log("\n" + "=".repeat(70));
+  console.log("USER 1 | QUERY A: 'rice dinner' | Filter: cuisines=['asian']");
+  console.log("=".repeat(70));
+  console.log("Expected: Asian rice recipes only (hard filter)");
+  console.log("Expected: No peanuts/shellfish | Japanese/Thai and gluten free boosted");
+  console.log("Expected: 'dinner' boosts dinner dish types (+10)");
+  console.log("Expected: Pantry ingredients boost garlic, ginger, soy sauce matches\n");
+
+  displayRecipes(searchEngine.search({
+    searchQuery: "rice dinner",
+    userId: user1Id,
+    filters: { cuisines: ["asian"] }
+  }));
+
+  userDb.deleteUser(user1Id);
+  console.log("\n🧹 user_one deleted");
 
   // ============================================
-  // TEST 7: Search with user profile
+  // USER 2 SETUP: Mediterranean, large pantry
   // ============================================
   console.log("\n" + "=".repeat(70));
-  console.log("TEST: Search with User Profile");
+  console.log("USER 2 SETUP");
   console.log("=".repeat(70));
-  console.log("Query: 'curry dinner'");
-  console.log(`User: test_user (ID: ${testUserId})`);
-  console.log("Expected: Japanese/Thai, gluten free, 15-45 min");
-  console.log("Expected: No peanuts/shellfish");
-  console.log("Expected: Boost for pantry ingredients\n");
 
-  const test7 = searchEngine.search({
-    searchQuery: "curry dinner",
-    userId: testUserId
-  });
-  displayRecipes(test7);
+  const existing2 = userDb.verifyUser("user_two", "password123");
+  if (existing2) userDb.deleteUser(existing2.id);
 
-  // ============================================
-  // TEST
-  // ============================================
+  const user2Id = userDb.createUser("user_two", "password123");
+  console.log(`\n👤 user_two (ID: ${user2Id})`);
+
+  userDb.addAllergy(user2Id, "egg");
+  console.log("🚫 Allergies: egg");
+
+  ["olive oil", "tomato", "onion", "garlic", "lemon", "feta", "chickpeas", "lamb", "eggplant", "pasta"].forEach(i => userDb.addIngredient(user2Id, i));
+  console.log("🥕 Pantry: olive oil, tomato, onion, garlic, lemon, feta, chickpeas, lamb, eggplant, pasta");
+
+  userDb.addCuisine(user2Id, "mediterranean");
+  userDb.addCuisine(user2Id, "greek");
+  userDb.addDiet(user2Id, "vegetarian");
+  console.log("⚙️  Preferences: mediterranean, greek | vegetarian");
+
+  // USER 2 — QUERY B
   console.log("\n" + "=".repeat(70));
-  console.log("TEST");
+  console.log("USER 2 | QUERY B: 'salad' | Filter: cuisines=['mediterranean']");
   console.log("=".repeat(70));
-  console.log("Query: 'pasta'");
-  console.log(`User: test_user (ID: ${testUserId})`);
-  console.log("Expected: Still no peanuts/shellfish (allergies always apply)\n");
+  console.log("Expected: Mediterranean salads only (hard filter)");
+  console.log("Expected: No eggs | Vegetarian preference boosted");
+  console.log("Expected: Ingredient coverage boost from pantry\n");
 
-  const test8 = searchEngine.search({
-    searchQuery: "pasta",
-    userId: testUserId
-  });
-  displayRecipes(test8);
+  displayRecipes(searchEngine.search({
+    searchQuery: "salad",
+    userId: user2Id,
+    filters: { cuisines: ["mediterranean"] }
+  }));
 
-  // ============================================
-  // TEST: Explicit filters
-  // ============================================
-  console.log("\n" + "=".repeat(70));
-  console.log("TEST: Explicit Filter Parameters");
-  console.log("=".repeat(70));
-  console.log("Query: 'soup'");
-  console.log("Filters: cuisines=['asian'], diets=['vegetarian']\n");
-
-  const test10 = searchEngine.search({
-    searchQuery: "soup",
-    filters: {
-      cuisines: ["asian"],
-      diets: ["vegetarian"]
-    }
-  });
-  displayRecipes(test10);
-
-  // ============================================
-  // CLEANUP
-  // ============================================
-  console.log("\n" + "=".repeat(70));
-  console.log("🧹 Cleanup");
-  console.log("=".repeat(70));
-  console.log("\nDeleting test user...");
-  userDb.deleteUser(testUserId);
-  console.log("✅ Test user deleted");
+  userDb.deleteUser(user2Id);
+  console.log("\n🧹 user_two deleted");
 
   searchEngine.close();
   userDb.close();
@@ -169,20 +146,18 @@ function interactiveMode() {
 
   console.log("\n🔍 INTERACTIVE SEARCH MODE");
   console.log("=".repeat(70));
-  console.log("\nEnter your search query:");
-  console.log("Examples:");
+  console.log("\nExamples:");
   console.log("  - 'chicken pasta'");
   console.log("  - 'quick vegetarian dinner'");
   console.log("  - 'italian easy'");
   console.log("  - 'mexican under 30 minutes'\n");
 
-  // Get query from command line args
   const args = process.argv.slice(2);
-  
+
   if (args.length === 0) {
     console.log("❌ Please provide a search query as an argument");
-    console.log("   Example: ts-node test-search.ts 'chicken pasta'");
-    console.log("\n   Or run full test suite: ts-node test-search.ts --test\n");
+    console.log("   Example: npx tsx test.ts 'chicken pasta'");
+    console.log("\n   Or run full test suite: npx tsx test.ts --test\n");
     searchEngine.close();
     return;
   }
@@ -190,10 +165,7 @@ function interactiveMode() {
   const query = args.join(" ");
   console.log(`Query: "${query}"\n`);
 
-  const results = searchEngine.search({
-    searchQuery: query
-  });
-
+  const results = searchEngine.search({ searchQuery: query });
   displayRecipes(results, `Search Results for: "${query}"`);
   searchEngine.close();
 }
@@ -210,11 +182,11 @@ if (args.includes("--test") || args.includes("-t")) {
 } else {
   console.log("\n🔍 RECIPE SEARCH TESTER\n");
   console.log("Usage:");
-  console.log("  Run full test suite:    ts-node test.ts --test");
-  console.log("  Interactive search:     ts-node test.ts 'your query here'");
+  console.log("  Run full test suite:    npx tsx test.ts --test");
+  console.log("  Interactive search:     npx tsx test.ts 'your query here'");
   console.log("\nExamples:");
-  console.log("  ts-node test.ts --test");
-  console.log("  ts-node test.ts 'chicken pasta'");
-  console.log("  ts-node test.ts 'quick vegetarian dinner'");
-  console.log("  ts-node test.ts 'italian easy under 30 minutes'\n");
+  console.log("  npx tsx test.ts --test");
+  console.log("  npx tsx test.ts 'chicken pasta'");
+  console.log("  npx tsx test.ts 'quick vegetarian dinner'");
+  console.log("  npx tsx test.ts 'italian easy under 30 minutes'\n");
 }
