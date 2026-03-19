@@ -93,7 +93,7 @@ export default function Index() {
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     difficulty: null, maxTime: null, cuisine: null, dietary: [], mealType: null 
   });
-  const [results, setResults] = useState<APIRecipe[]>(ALL_RECIPES_DATA);
+  const [results, setResults] = useState<APIRecipe[]>([]);
   const [greeting, setGreeting] = useState<string>('Good Morning');
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [health, setHealth] = useState<string>("checking");
